@@ -1,0 +1,60 @@
+<div id="apiCurlPanel" class="info-panel">
+    <div class="info-panel-header">
+        <span class="info-panel-title">API - cURL Examples</span>
+        <button class="info-panel-close" onclick="closePinout()">Close</button>
+    </div>
+    <p style="font-size:0.85rem; color:var(--text-muted);">Examples use the current API URL and key from the header. All endpoints except <code>/hello</code> require the <code>Api-Key</code> header.</p>
+
+    <div class="info-section">
+        <h3>1. Health check</h3>
+        <p>Ping the Pi - no auth required. Used for discovery.</p>
+        <div class="info-code-block" id="curl1"></div>
+    </div>
+
+    <div class="info-section">
+        <h3>2. Read all configured pins</h3>
+        <p>Returns a dict of every pin that has been configured, with its current value and settings.</p>
+        <div class="info-code-block" id="curl2"></div>
+    </div>
+
+    <div class="info-section">
+        <h3>3. Write to a pin</h3>
+        <p>Set GPIO 26 HIGH for 2 seconds, then auto-revert. Pass <code>"value": 0</code> (or <code>"off"</code>) to set LOW, or <code>"value": "toggle"</code> to flip it.</p>
+        <div class="info-code-block" id="curl3"></div>
+    </div>
+
+    <div class="info-section">
+        <h3>4. Configure a pin (relay, reversed, max 1 hour)</h3>
+        <p>Name GPIO 26 "relay", set it as a reversed output with a 1-hour max pulse duration.</p>
+        <div class="info-code-block" id="curl4"></div>
+    </div>
+
+    <div class="info-section">
+        <h3>5. Scan all BCM GPIO hardware pins (Pi only)</h3>
+        <p>Read the physical state of the Pi’s BCM GPIO pins (requires Pi hardware). Returns <code>level</code> (physical) and <code>value</code> (logical, reversed-aware) for each pin.</p>
+        <div class="info-code-block" id="curl5"></div>
+    </div>
+
+    <div class="info-section">
+        <h3>6. Configure a watched input</h3>
+        <p>Set GPIO 6 as a watched input. State changes send webhooks when a target is configured; with no webhook or bridge target, events are logged instead.</p>
+        <div class="info-code-block" id="curl6"></div>
+    </div>
+
+    <div class="info-section">
+        <h3>7. Change the webhook URL</h3>
+        <p>Update where watched-pin events get POSTed.</p>
+        <div class="info-code-block" id="curl7"></div>
+    </div>
+    <div class="info-section">
+        <h3>8. Configure a sensor</h3>
+        <p>Configure <code>cpu_temp</code> using <code>cpu-temp.sh</code>, the example seeded into <code>scripts/</code> by the Pi installer. On a Pico, use <code>cpu-temp.py</code> instead.</p>
+        <div class="info-code-block" id="curl8"></div>
+    </div>
+
+    <div class="info-section">
+        <h3>9. Read a sensor</h3>
+        <p>Read the configured sensor. The result is returned under its name, for example <code>{"cpu_temp": 47.8}</code>.</p>
+        <div class="info-code-block" id="curl9"></div>
+    </div>
+</div>

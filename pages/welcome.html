@@ -1,0 +1,83 @@
+<div id="welcomePanel" class="info-panel">
+    <div class="info-panel-header">
+        <span class="info-panel-title">Welcome to ctrlPi</span>
+        <button class="info-panel-close" onclick="closePinout()">Close</button>
+    </div>
+
+    <div class="info-section">
+        <h3>What is ctrlPi?</h3>
+        <p>ctrlPi lets you control Raspberry Pi and Pico W GPIO pins and read named sensors over a REST API, from a dashboard, command line, or integration.</p>
+    </div>
+
+    <div class="info-section">
+        <h3>Architecture</h3>
+        <div class="info-cards">
+            <div class="info-card">
+                <div class="info-card-title">Pi / Pico Agent</div>
+                <div class="info-card-desc">The Pi runs a Python FastAPI server with gpiozero; the Pico W / Pico 2 W runs a MicroPython server with machine.Pin. Both use port 8314 by default and the same REST API. API requests require an <code>Api-Key</code> header, except <code>/hello</code>.</div>
+            </div>
+            <div class="info-card">
+                <div class="info-card-title">ctrlpi-lab (this app)</div>
+                <div class="info-card-desc">Local browser dashboard for your ctrlPi setup: test GPIO and sensor endpoints, watch webhook events, and tail agent logs with zero dependencies.</div>
+            </div>
+            <div class="info-card">
+                <div class="info-card-title">Webhooks and integrations</div>
+                <div class="info-card-desc">Agents send watched-pin events to your webhook URL and configured bridge callbacks. The public ctrlpi.com webhook test feed is for setup and debugging; MCP and smart-home bridges connect separately to the agents.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <h3>Key capabilities</h3>
+        <ul>
+            <li>Read and write GPIO pins by number or configured name alias</li>
+            <li>Configure pins as input, output, VCC (always HIGH), or GND (always LOW)</li>
+            <li>Timed output pulses with automatic revert: <code>duration</code> is capped by <code>max</code>; when duration is omitted, a configured max supplies it</li>
+            <li>Active-low (reversed) logic, with logical value and physical level reported separately</li>
+            <li>Watch inputs for state changes and outputs for writes; send events to configured webhook and bridge targets, or log them when no target is configured</li>
+            <li>Read named sensors on demand using scripts: shell scripts on Pi, MicroPython scripts on Pico</li>
+            <li>Read, update, and load configuration, with automatic backups before updates and loads</li>
+        </ul>
+    </div>
+
+    <div class="info-section">
+        <h3>Quick start</h3>
+        <p>Install an agent using the instructions below. In the header, select a discovered agent or click <strong>+</strong> to add its IP address or hostname, port (default <strong>8314</strong>), and API key. Use the key icon to edit the saved key, then explore endpoints in the <strong>API</strong> tab or open <strong>API - cURL Examples</strong>.</p>
+        <p>The agents serve plain HTTP. Keep them on a trusted LAN; use a tunnel for remote access rather than exposing port 8314 to the internet.</p>
+    </div>
+
+    <div class="info-section">
+        <h3>Install the API on a Raspberry Pi</h3>
+        <p>Requires Python 3.9+ on Raspberry Pi OS. Supported boards: Raspberry Pi 2, 3, 4, 5, Zero W, and Zero 2 W. Run these commands in a terminal on the Pi.</p>
+        <p><strong>Recommended: install with curl</strong></p>
+        <div class="info-code-block">curl -fsSL https://raw.githubusercontent.com/ctrlpi/pi-gpio-api/main/install.sh | bash
+cd pi-gpio-api
+./run.sh</div>
+        <p>The installer downloads the project, builds its virtual environment, and asks for an agent name and API key if no config exists. The server listens on all interfaces at port 8314 by default.</p>
+        <p><strong>Alternative: clone with git</strong></p>
+        <div class="info-code-block">git clone https://github.com/ctrlpi/pi-gpio-api.git
+cd pi-gpio-api
+./install.sh
+./run.sh</div>
+        <p>To run at boot, copy the ready-to-paste systemd command printed by the installer. To change and save the API key when starting the server:</p>
+        <div class="info-code-block">./run.sh --api-key your-secret-key --save</div>
+        <p>See the <a href="https://github.com/ctrlpi/pi-gpio-api#install-on-your-pi" target="_blank" rel="noopener noreferrer">Pi API installation guide</a> for GPIO backend requirements and more options.</p>
+    </div>
+
+    <div class="info-section">
+        <h3>Install the API on a Raspberry Pi Pico</h3>
+        <p>Requires a <strong>Pico W or Pico 2 W</strong>, MicroPython firmware, and a Mac/PC connected to the board over USB. Run the tools below on your computer, not on the Pico.</p>
+        <p><strong>Easiest: Pico Bay</strong></p>
+        <div class="info-code-block">npx @ctrlpi/pico-bay</div>
+        <p>Connect your board and choose <strong>Install ctrlPi API</strong> from the top-right menu. Enter your API key and WiFi information when prompted. Pico Bay can also install MicroPython when the board is connected in BOOTSEL mode, or after choosing <strong>Reboot to BOOTSEL</strong>.</p>
+        <p><strong>Alternative: install with curl</strong></p>
+        <div class="info-code-block">curl -fsSL https://raw.githubusercontent.com/ctrlpi/pico-gpio-api/main/install.sh | bash</div>
+        <p>With MicroPython already installed, the installer asks for any missing API key, agent name, and WiFi credentials, copies the files to every connected Pico over USB using mpremote, and resets the boards. Existing device configuration is preserved on a normal reinstall.</p>
+        <p><strong>Alternative: clone with git</strong></p>
+        <div class="info-code-block">git clone https://github.com/ctrlpi/pico-gpio-api.git
+cd pico-gpio-api
+./install.sh</div>
+        <p>The API starts automatically at every boot on port 8314. The original Pico W requires an <code>http://</code> webhook target; Pico 2 W also supports <code>https://</code>.</p>
+        <p>See the <a href="https://github.com/ctrlpi/pico-gpio-api#install-on-your-pico-w" target="_blank" rel="noopener noreferrer">Pico API installation guide</a> for firmware, WiFi, and USB deployment details.</p>
+    </div>
+</div>

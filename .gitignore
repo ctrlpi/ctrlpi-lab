@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env
+
+# Config / secrets
+config.json
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+._*
+
+# Claude Code local settings
+.claude/
+
+# Node
+node_modules/

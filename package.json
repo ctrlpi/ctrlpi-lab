@@ -1,0 +1,34 @@
+{
+  "name": "@ctrlpi/ctrlpi-lab",
+  "version": "0.9.24",
+  "description": "A local browser dashboard for your ctrlPi setup. Test GPIO and sensor endpoints, watch webhook events, and tail agent logs, with zero dependencies.",
+  "type": "module",
+  "main": "ctrlpi-lab.js",
+  "bin": {
+    "ctrlpi-lab": "ctrlpi-lab.js"
+  },
+  "files": [
+    "ctrlpi-lab.js",
+    "pages"
+  ],
+  "scripts": {
+    "dev": "NODE_ENV=development node ctrlpi-lab.js",
+    "test": "node --test",
+    "start": "node ctrlpi-lab.js",
+    "run": "node ctrlpi-lab.js",
+    "test:ci": "npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "author": "ctrlPi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ctrlpi/ctrlpi-lab.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ctrlpi/ctrlpi-lab/issues"
+  },
+  "homepage": "https://github.com/ctrlpi/ctrlpi-lab#readme"
+}
