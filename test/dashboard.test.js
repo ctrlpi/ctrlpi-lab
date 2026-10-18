@@ -44,6 +44,39 @@ test('scan results populate choices and selecting an agent applies its address a
     assert.equal(get('apiKeyInput').value, 'a-key');
 });
 
+test('scan reconciles moved agent with the same name to its new address without duplicates', async () => {
+    // Initial state: pico is known at 192.168.1.50
+    const initialServers = [
+        { url: 'http://192.168.1.50:8314', name: 'pico-lab', api_key: 'pico-secret' }
+    ];
+    // Scan finds pico at new address 192.168.1.99
+    const scannedServer = { url: 'http://192.168.1.99:8314', name: 'pico-lab', api_key: 'pico-secret' };
+    let controller;
+    const stream = new ReadableStream({ start(val) { controller = val; } });
+    const { context, get } = dashboard(async url => {
+        if (url.includes('/api/scan?')) return { ok: true, headers: new Headers({ 'content-type': 'application/x-ndjson' }), body: stream };
+        assert.equal(url, '/api/servers');
+        return { ok: true, json: async () => ({ servers: [scannedServer] }) };
+    });
+    await context.loadSavedServers(initialServers);
+    assert.equal(get('savedServersPanel').children.length, 1);
+    assert.match(get('savedServersPanel').children[0].textContent, /192\.168\.1\.50/);
+
+    const scan = context.runNetworkScan();
+    controller.enqueue(new TextEncoder().encode(JSON.stringify({ type: 'agent', agent: scannedServer }) + '\n'));
+    controller.enqueue(new TextEncoder().encode(JSON.stringify({
+        type: 'done', subnet: '192.168.1.0/24', found: [scannedServer.url], names: { [scannedServer.url]: scannedServer.name }
+    }) + '\n'));
+    controller.close();
+    await scan;
+
+    // Must have exactly 1 server in dropdown, updated to .99 instead of both .50 and .99
+    const items = get('savedServersPanel').children;
+    assert.equal(items.length, 1);
+    assert.match(items[0].textContent, /192\.168\.1\.99/);
+    assert.doesNotMatch(items[0].textContent, /192\.168\.1\.50/);
+});
+
 test('scan failure is displayed and the scan indicator stops', async () => {
     const { context, get } = dashboard(async () => { throw new Error('Connection lost'); });
     let stopped = false;
@@ -190,9 +223,39 @@ test('dropdown loads board models and formats name, model and address', async ()
         { name: 'Offline', url: 'http://offline.local:8314', api_key: '' }
     ]);
     await context.loadAgentModels();
-    const labels = get('savedServersPanel').children.map(item => item.textContent);
+    const items = get('savedServersPanel').children;
+    const labels = items.map(item => item.textContent);
     assert.ok(labels.includes('B1 - Pi Zero W Rev 1.1 pi.local:8314'));
     assert.ok(labels.includes('Offline offline.local:8314'));
+    const b1Item = items.find(item => item.textContent.includes('B1'));
+    const offlineItem = items.find(item => item.textContent.includes('Offline'));
+    assert.match(b1Item.innerHTML, /color:var\(--success\)/);
+    assert.doesNotMatch(b1Item.innerHTML, /servers-dd-delete-btn/);
+    assert.match(offlineItem.innerHTML, /color:#9ca3af/);
+    assert.match(offlineItem.innerHTML, /servers-dd-delete-btn/);
+});
+
+test('offline agent shows delete button and can be deleted via DELETE /api/servers', async () => {
+    let deletedUrl = null;
+    const { context, get } = dashboard(async (url, options) => {
+        if (options && options.method === 'DELETE') {
+            deletedUrl = url;
+            return { ok: true, json: async () => ({ servers: [{ name: 'B1', url: 'http://pi.local:8314', api_key: 'pi-key' }] }) };
+        }
+        return { ok: true, json: async () => ({}) };
+    });
+    await context.loadSavedServers([
+        { name: 'B1', url: 'http://pi.local:8314', api_key: 'pi-key' },
+        { name: 'Dead', url: 'http://dead.local:8314', api_key: '' }
+    ]);
+    const items = get('savedServersPanel').children;
+    const deadItem = items.find(item => item.textContent.includes('Dead'));
+    assert.match(deadItem.innerHTML, /servers-dd-delete-btn/);
+    await context.deleteSavedAgent(null, 'http://dead.local:8314');
+    assert.equal(deletedUrl, '/api/servers?url=http%3A%2F%2Fdead.local%3A8314');
+    const updated = get('savedServersPanel').children.map(item => item.textContent);
+    assert.equal(updated.length, 1);
+    assert.ok(updated[0].includes('B1'));
 });
 
 
@@ -272,4 +335,117 @@ test('log and webhook polling replace their timers and stop in Manual mode', () 
     context.setupWebhookAutoRefresh();
     assert.deepEqual(cleared, [1, 2]);
     assert.equal(intervals.length, 2);
+});
+
+test('GPIO type and remove change toggles form field visibility and syncs state', () => {
+    const { context, get } = dashboard();
+    context.onGpioTypeChange('output');
+    assert.equal(get('param-body-group-name').style.display, '');
+    assert.equal(get('param-body-group-pullup').style.display, 'none');
+    assert.equal(get('param-body-group-max').style.display, '');
+    assert.equal(get('param-body-remove').checked, false);
+
+    context.onGpioTypeChange('input');
+    assert.equal(get('param-body-group-pullup').style.display, '');
+    assert.equal(get('param-body-group-max').style.display, 'none');
+    assert.equal(get('param-body-remove').checked, false);
+
+    context.onGpioRemoveChange(true);
+    assert.equal(get('param-body-type').value, 'remove');
+    assert.equal(get('param-body-group-name').style.display, 'none');
+    assert.equal(get('param-body-group-pullup').style.display, 'none');
+    assert.equal(get('param-body-group-max').style.display, 'none');
+    assert.equal(get('param-body-remove').checked, true);
+
+    context.onGpioRemoveChange(false);
+    assert.equal(get('param-body-type').value, 'output');
+    assert.equal(get('param-body-remove').checked, false);
+    assert.equal(get('param-body-group-name').style.display, '');
+    assert.equal(get('param-body-group-max').style.display, '');
+});
+
+test('getFormBodyData formats and syncs remove and type for GPIO config', () => {
+    const { context, get } = dashboard();
+    context.selectEndpoint('config_gpio', false);
+    get('param-body-name').value = 'fan';
+    get('param-body-type').value = 'output';
+    get('param-body-remove').checked = false;
+    let payload = context.getFormBodyData();
+    assert.equal(payload.name, 'fan');
+    assert.equal(payload.type, 'output');
+    assert.equal(payload.remove, false);
+
+    get('param-body-remove').checked = true;
+    payload = context.getFormBodyData();
+    assert.equal(payload.type, 'remove');
+    assert.equal(payload.remove, true);
+});
+
+test('getFormBodyData sends init 1/0 as numbers and keeps other init values as text', () => {
+    const { context, get } = dashboard();
+    context.selectEndpoint('config_gpio', false);
+    get('param-body-type').value = 'output';
+    get('param-body-remove').checked = false;
+    for (const [input, sent] of [['1', 1], ['0', 0], ['last', 'last'], ['none', 'none']]) {
+        get('param-body-init').value = input;
+        assert.equal(context.getFormBodyData().init, sent, input);
+    }
+});
+
+test('GPIO path accepts any pin number, so Pico and ESP32 pins can be sent', () => {
+    const { context, get } = dashboard();
+    get('apiHostInput').value = '127.0.0.1';
+    for (const pin of ['0', '1', '28', '39', '48']) {
+        context.validateConfigGpio(pin);
+        assert.equal(get('sendRequestBtn').disabled, false, pin);
+    }
+    context.validateConfigGpio('relay');
+    assert.equal(get('sendRequestBtn').disabled, true, 'GPIO config takes a number, not a name');
+    context.validateReadWriteGpio('relay');
+    assert.equal(get('sendRequestBtn').disabled, false, 'read and write accept a pin name');
+});
+
+test('filterEndpoints searches endpoints by path and description', () => {
+    const { context, get } = dashboard();
+    context.renderEndpointsSidebar();
+    get('endpointSearchInput').value = 'scan';
+    context.filterEndpoints();
+    assert.equal(get('sidebar-item-scan_gpio').style.display, 'flex');
+    assert.equal(get('sidebar-item-hello').style.display, 'none');
+    assert.equal(get('sidebar-item-read_gpio_all').style.display, 'none');
+
+    get('endpointSearchInput').value = '';
+    context.filterEndpoints();
+    assert.equal(get('sidebar-item-scan_gpio').style.display, 'flex');
+    assert.equal(get('sidebar-item-hello').style.display, 'flex');
+    assert.equal(get('sidebar-item-read_gpio_all').style.display, 'flex');
+});
+
+test('info panels open, close, and populate curl examples', () => {
+    const { context, get } = dashboard();
+    get('apiHostInput').value = 'http://192.168.1.100';
+    get('apiPortInput').value = '8314';
+    get('apiKeyInput').value = 'test-curl-key';
+    context.showInfoPanel('apiCurlPanel');
+    assert.equal(get('apiCurlPanel').style.display, 'flex');
+    assert.match(get('curl1').textContent, /curl http:\/\/192\.168\.1\.100:8314\/hello/);
+    assert.match(get('curl6').textContent, /gpio\/config\/6/);
+    assert.match(get('curl6').textContent, /-H "Api-Key: test-curl-key"/);
+
+    context.closeInfoPanel();
+    assert.equal(get('apiCurlPanel').style.display, 'none');
+});
+
+test('theme toggle switches dark mode and persists setting', () => {
+    const { context } = dashboard();
+    let stored = null;
+    context.localStorage = {
+        getItem: () => stored,
+        setItem: (k, v) => { stored = v; }
+    };
+    context.initTheme();
+    context.toggleTheme();
+    assert.equal(stored, 'dark');
+    context.toggleTheme();
+    assert.equal(stored, 'light');
 });

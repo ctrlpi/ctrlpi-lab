@@ -1,30 +1,70 @@
 <div id="welcomePanel" class="info-panel">
     <div class="info-panel-header">
         <span class="info-panel-title">Welcome to ctrlPi</span>
-        <button class="info-panel-close" onclick="closePinout()">Close</button>
+        <button class="info-panel-close" onclick="closeInfoPanel()">Close</button>
     </div>
 
     <div class="info-section">
         <h3>What is ctrlPi?</h3>
-        <p>ctrlPi lets you control Raspberry Pi and Pico W GPIO pins and read named sensors over a REST API, from a dashboard, command line, or integration.</p>
+        <p>ctrlPi lets you control Raspberry Pi, Pico W, and ESP32 GPIO pins and read named sensors over a REST API, from a dashboard, command line, or integration.</p>
     </div>
 
     <div class="info-section">
         <h3>Architecture</h3>
+        <p>One tiny server per board. Everything else talks to it over plain HTTP on your LAN.</p>
         <div class="info-cards">
             <div class="info-card">
-                <div class="info-card-title">Pi / Pico Agent</div>
-                <div class="info-card-desc">The Pi runs a Python FastAPI server with gpiozero; the Pico W / Pico 2 W runs a MicroPython server with machine.Pin. Both use port 8314 by default and the same REST API. API requests require an <code>Api-Key</code> header, except <code>/hello</code>.</div>
+                <div class="info-card-icon i-green">
+                    <svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.6"/><path d="M9 7V4M12 7V4M15 7V4M9 20v-3M12 20v-3M15 20v-3M7 9H4M7 12H4M7 15H4M20 9h-3M20 12h-3M20 15h-3"/></svg>
+                </div>
+                <div class="info-card-title">Agents: the muscle</div>
+                <div class="info-card-desc">A single-file REST server on the Pi, Pico W, or ESP32 drives the pins: outputs, inputs, pull-ups, pulses with auto-revert, reversed relay logic, and webhooks on every change. Same API across boards, clients never care which one answered.</div>
             </div>
             <div class="info-card">
-                <div class="info-card-title">ctrlpi-lab (this app)</div>
-                <div class="info-card-desc">Local browser dashboard for your ctrlPi setup: test GPIO and sensor endpoints, watch webhook events, and tail agent logs with zero dependencies.</div>
+                <div class="info-card-icon i-violet">
+                    <svg viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v8a1 1 0 0 0 1 1h3v-5h4v5h3a1 1 0 0 0 1-1v-8"/></svg>
+                </div>
+                <div class="info-card-title">Bridges: the home</div>
+                <div class="info-card-desc">Matter and native-HomeKit bridges declare your devices in one JSON file: lights, locks, garage doors, valves, sensors, buttons, and drive them through the agents' API. Pair once, control from your phone, your watch, or "Hey Siri".</div>
             </div>
             <div class="info-card">
-                <div class="info-card-title">Webhooks and integrations</div>
-                <div class="info-card-desc">Agents send watched-pin events to your webhook URL and configured bridge callbacks. The public ctrlpi.com webhook test feed is for setup and debugging; MCP and smart-home bridges connect separately to the agents.</div>
+                <div class="info-card-icon i-rose">
+                    <svg viewBox="0 0 24 24"><path d="M12 3v3M8 8h8a2 2 0 0 1 2 2v6a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-6a2 2 0 0 1 2-2Z"/><circle cx="9.5" cy="12.5" r="1"/><circle cx="14.5" cy="12.5" r="1"/><path d="M5 12H3M21 12h-2"/></svg>
+                </div>
+                <div class="info-card-title">MCP: the brain</div>
+                <div class="info-card-desc">A zero-dependency Model Context Protocol server exposes the whole GPIO surface as tools. Ask Claude to scan your LAN for agents, flip a relay, or watch a door sensor, in plain language.</div>
             </div>
         </div>
+        <div class="info-flow">
+            <p><strong>Small pieces, one wire format:</strong> every connection is plain HTTP with an <code>Api-Key</code> header, no hubs or clouds required.</p>
+            <pre class="info-flow-pre">
+   <span class="c-rose">[Claude / MCP client]</span>          <span class="c-violet">[Apple Home]</span>        <span class="c-violet">[Google Home / Alexa]</span>
+             │                          │                       │
+     MCP (STDIO/HTTP)                  HAP                   Matter
+             │                          │                       │
+             ▼                          ▼                       ▼
+        <span class="c-rose">mcp-bridge</span>               <span class="c-violet">homekit-bridge</span>           <span class="c-violet">matter-bridge</span>    <span class="c-blue">◀─────────────────────────┐</span>
+             │                          │                       │                                    <span class="c-blue">:</span>
+             └──────────────────────────┼───────────────────────┘                                    <span class="c-blue">:</span>
+                                        │                                                            <span class="c-blue">:</span>
+              REST  /gpio/*  /sensors/*  /scripts/*  /config/*  <span class="c-mut">(Api-Key)</span>                            <span class="c-blue">:</span>
+                                        │                                                            <span class="c-blue">:</span>
+  <span class="c-green">agents · pi-gpio-api (Pi) · pico-gpio-api (Pico W) · esp32-gpio-api (ESP32)</span><span class="c-blue"> ── Notifications ──────┘</span>
+                                        │
+              relays · locks · lights · valves · sensors · buttons</pre>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <h3>What is ctrlpi-lab?</h3>
+        <p><strong>ctrlpi-lab</strong> is the browser workbench for your ctrlPi setup. It provides a lightweight, zero-dependency local dashboard that communicates with your agents over HTTP through an internal proxy:</p>
+        <ul>
+            <li><strong>API Tester:</strong> test every GPIO, sensor, and configuration endpoint directly from the browser with dynamic form controls, response inspection, and instant cURL examples.</li>
+            <li><strong>Live Logs:</strong> inspect and tail agent logs in real time with keyword search and category filtering.</li>
+            <li><strong>Webhook Monitor:</strong> monitor live events and notifications delivered to public test or local webhook endpoints.</li>
+            <li><strong>Automatic Discovery:</strong> sweeps your local subnet for online agents, saves credentials securely, and keeps your agent list in sync with all ctrlPi tools.</li>
+            <li><strong>Shared Ecosystem:</strong> shares configuration with <code>mcp-bridge</code> and smart-home bridges, allowing AI assistants (like Claude) to connect to your agents using the same saved credentials.</li>
+        </ul>
     </div>
 
     <div class="info-section">
@@ -35,7 +75,7 @@
             <li>Timed output pulses with automatic revert: <code>duration</code> is capped by <code>max</code>; when duration is omitted, a configured max supplies it</li>
             <li>Active-low (reversed) logic, with logical value and physical level reported separately</li>
             <li>Watch inputs for state changes and outputs for writes; send events to configured webhook and bridge targets, or log them when no target is configured</li>
-            <li>Read named sensors on demand using scripts: shell scripts on Pi, MicroPython scripts on Pico</li>
+            <li>Read named sensors on demand using scripts: shell scripts on Pi, MicroPython scripts on Pico and ESP32</li>
             <li>Read, update, and load configuration, with automatic backups before updates and loads</li>
         </ul>
     </div>
@@ -49,16 +89,11 @@
     <div class="info-section">
         <h3>Install the API on a Raspberry Pi</h3>
         <p>Requires Python 3.9+ on Raspberry Pi OS. Supported boards: Raspberry Pi 2, 3, 4, 5, Zero W, and Zero 2 W. Run these commands in a terminal on the Pi.</p>
-        <p><strong>Recommended: install with curl</strong></p>
+        <p><strong>Install with curl</strong></p>
         <div class="info-code-block">curl -fsSL https://raw.githubusercontent.com/ctrlpi/pi-gpio-api/main/install.sh | bash
 cd pi-gpio-api
 ./run.sh</div>
         <p>The installer downloads the project, builds its virtual environment, and asks for an agent name and API key if no config exists. The server listens on all interfaces at port 8314 by default.</p>
-        <p><strong>Alternative: clone with git</strong></p>
-        <div class="info-code-block">git clone https://github.com/ctrlpi/pi-gpio-api.git
-cd pi-gpio-api
-./install.sh
-./run.sh</div>
         <p>To run at boot, copy the ready-to-paste systemd command printed by the installer. To change and save the API key when starting the server:</p>
         <div class="info-code-block">./run.sh --api-key your-secret-key --save</div>
         <p>See the <a href="https://github.com/ctrlpi/pi-gpio-api#install-on-your-pi" target="_blank" rel="noopener noreferrer">Pi API installation guide</a> for GPIO backend requirements and more options.</p>
@@ -70,14 +105,47 @@ cd pi-gpio-api
         <p><strong>Easiest: Pico Bay</strong></p>
         <div class="info-code-block">npx @ctrlpi/pico-bay</div>
         <p>Connect your board and choose <strong>Install ctrlPi API</strong> from the top-right menu. Enter your API key and WiFi information when prompted. Pico Bay can also install MicroPython when the board is connected in BOOTSEL mode, or after choosing <strong>Reboot to BOOTSEL</strong>.</p>
-        <p><strong>Alternative: install with curl</strong></p>
+        <p><strong>Or install with curl</strong></p>
         <div class="info-code-block">curl -fsSL https://raw.githubusercontent.com/ctrlpi/pico-gpio-api/main/install.sh | bash</div>
         <p>With MicroPython already installed, the installer asks for any missing API key, agent name, and WiFi credentials, copies the files to every connected Pico over USB using mpremote, and resets the boards. Existing device configuration is preserved on a normal reinstall.</p>
-        <p><strong>Alternative: clone with git</strong></p>
-        <div class="info-code-block">git clone https://github.com/ctrlpi/pico-gpio-api.git
-cd pico-gpio-api
-./install.sh</div>
         <p>The API starts automatically at every boot on port 8314. The original Pico W requires an <code>http://</code> webhook target; Pico 2 W also supports <code>https://</code>.</p>
         <p>See the <a href="https://github.com/ctrlpi/pico-gpio-api#install-on-your-pico-w" target="_blank" rel="noopener noreferrer">Pico API installation guide</a> for firmware, WiFi, and USB deployment details.</p>
+    </div>
+
+    <div class="info-section">
+        <h3>Install the API on an ESP32</h3>
+        <p>Requires an <strong>ESP32</strong>, <strong>ESP32-C3</strong> or <strong>ESP32-S3</strong> with MicroPython 1.29 firmware (the matching ESP32_GENERIC build), and a Mac/PC connected to the board over USB. Run the tools below on your computer, not on the ESP32.</p>
+        <p><strong>Easiest: Pico Bay</strong></p>
+        <div class="info-code-block">npx @ctrlpi/pico-bay</div>
+        <p>Connect your ESP32 and choose <strong>Install ctrlPi API</strong> from the top-right menu. Enter your API key and WiFi information when prompted.</p>
+        <p><strong>Or install with curl</strong></p>
+        <div class="info-code-block">curl -fsSL https://raw.githubusercontent.com/ctrlpi/esp32-gpio-api/main/install.sh | bash</div>
+        <p>With MicroPython already installed, the installer asks for your API key, agent name, and WiFi credentials, compiles bytecode, and deploys to the board over USB.</p>
+        <p>The API starts automatically at boot on port 8314.</p>
+        <p>See the <a href="https://github.com/ctrlpi/esp32-gpio-api#install-on-your-esp32" target="_blank" rel="noopener noreferrer">ESP32 API installation guide</a> for details.</p>
+    </div>
+
+    <div class="info-section">
+        <h3>Install and connect ctrlPi MCP Bridge</h3>
+        <p>An MCP (Model Context Protocol) server that gives AI assistants like Claude Desktop full control over your GPIO agents in natural conversation, with zero dependencies.</p>
+        <p><strong>Add to Claude Desktop (no install required)</strong></p>
+        <p>Open Claude Desktop settings, click <strong>Developer &rarr; Edit Config</strong>, and add <code>ctrlpi</code> under <code>mcpServers</code>:</p>
+        <div class="info-code-block">{
+  "mcpServers": {
+    "ctrlpi": {
+      "command": "npx",
+      "args": ["-y", "@ctrlpi/mcp-bridge"]
+    }
+  }
+}</div>
+        <p>Restart Claude Desktop. On first launch, it sweeps your local /24 subnet for agents and records them in <code>~/.ctrlpi/agents-config.json</code>.</p>
+        <p><strong>Run as an HTTP service (for remote clients and integrations)</strong></p>
+        <div class="info-code-block">npx -y @ctrlpi/mcp-bridge --http</div>
+        <p>Or install it in a folder of your choice:</p>
+        <div class="info-code-block">npm install @ctrlpi/mcp-bridge
+cd node_modules/@ctrlpi/mcp-bridge
+npm start -- --http</div>
+        <p>Listens on port <strong>8315</strong> and shares configuration with ctrlpi-lab in <code>~/.ctrlpi/agents-config.json</code>.</p>
+        <p>See the <a href="https://github.com/ctrlpi/mcp-bridge#readme" target="_blank" rel="noopener noreferrer">MCP Bridge documentation</a> for PM2 service configuration, key rotation, and tool details.</p>
     </div>
 </div>

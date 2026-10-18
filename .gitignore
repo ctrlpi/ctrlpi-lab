@@ -12,6 +12,7 @@ env/
 
 # Config / secrets
 config.json
+agents-config.json
 
 # Logs
 *.log

@@ -12,15 +12,28 @@ const html = assemble(path.join(root, 'pages/main.html'));
 const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)]
     .map(match => match[1]);
 
-export function dashboard(fetch) {
+export function dashboard(fetch = () => Promise.resolve({ ok: true, status: 200, json: async () => ({}) })) {
     const elements = new Map();
     const element = () => ({
-        value: '', _html: '', style: {}, children: [],
+        value: '', _html: '', style: {}, children: [], dataset: {},
         get innerHTML() { return this._html; },
         set innerHTML(value) { this._html = value; this.children = []; },
         get textContent() { return this._html.replace(/<[^>]*>/g, ''); },
         set textContent(value) { this._html = String(value); this.children = []; },
-        classList: { add() {}, remove() {}, contains() { return false; } },
+        classList: {
+            _classes: new Set(),
+            add(c) { this._classes.add(c); },
+            remove(c) { this._classes.delete(c); },
+            contains(c) { return this._classes.has(c); },
+            toggle(c, force) {
+                if (force !== undefined) {
+                    if (force) this.add(c); else this.remove(c);
+                    return force;
+                }
+                if (this.contains(c)) { this.remove(c); return false; }
+                this.add(c); return true;
+            }
+        },
         appendChild(child) { this.children.push(child); },
         setAttribute() {}, close() { this.closed = true; },
         showModal() {}, focus() {},
@@ -30,6 +43,7 @@ export function dashboard(fetch) {
         if (!elements.has(id)) elements.set(id, element());
         return elements.get(id);
     };
+    const body = element();
     const context = vm.createContext({
         console, URL, fetch, AbortSignal, TextDecoder,
         setInterval() { return 1; }, clearInterval() {},
@@ -38,8 +52,9 @@ export function dashboard(fetch) {
         window: { addEventListener() {} },
         document: {
             addEventListener() {}, getElementById: get,
-            createElement: element, querySelector() { return null; },
+            createElement: element, querySelector() { return element(); },
             querySelectorAll() { return []; },
+            body,
         },
     });
     for (const [index, script] of scripts.entries()) {

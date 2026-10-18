@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-# Copied from ctrlpi-cli/mock_agent.py; ephemeral port announcement added for lab tests.
+# Mock ctrlPi agent for tests: answers the agents' REST API from memory, on loopback.
+# Several projects keep an identical copy of this file; change them all together.
+# `--port 0` takes a free port and prints it, so a test can read it back.
 import os
 import sys
 import json
@@ -73,7 +75,8 @@ class AgentHandler(BaseHTTPRequestHandler):
             return self.send_json({"name": self.server.agent_name, "ip": "127.0.0.1"})
             
         if self.path == '/config/read':
-            cfg = self.server.config.copy()
+            # Like the real agents, /config/read never shows the agent's own key.
+            cfg = self._public_config()
             cfg["agent"] = {
                 "version": "1.0.0", 
                 "platform": self.server.agent_type,
@@ -143,13 +146,13 @@ class AgentHandler(BaseHTTPRequestHandler):
         
         if self.path == '/config/update':
             self.server.config.update(body)
-            # return full config to satisfy bridge validation
-            return self.send_json(self.server.config)
+            # The full config (bridges read their callback fields back), minus the key.
+            return self.send_json(self._public_config())
             
         if self.path == '/config/load':
+            # Like the real agents: a config without api_key keeps the current one.
+            body.setdefault('api_key', self.server.config.get('api_key'))
             self.server.config = body
-            if 'api_key' not in self.server.config:
-                self.server.config['api_key'] = "your-secret-key"
             if 'gpios' not in self.server.config:
                 self.server.config['gpios'] = {}
             if 'sensors' not in self.server.config:
@@ -256,6 +259,11 @@ class AgentHandler(BaseHTTPRequestHandler):
             return self.send_json({"status": "upgrading"})
             
         self.send_error_json("Not found", 404)
+
+    def _public_config(self):
+        cfg = dict(self.server.config)
+        cfg.pop('api_key', None)
+        return cfg
 
     def _mock_sensor_reading(self, name, conf):
         script = conf.get("script", "")

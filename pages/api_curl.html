@@ -1,7 +1,7 @@
 <div id="apiCurlPanel" class="info-panel">
     <div class="info-panel-header">
         <span class="info-panel-title">API - cURL Examples</span>
-        <button class="info-panel-close" onclick="closePinout()">Close</button>
+        <button class="info-panel-close" onclick="closeInfoPanel()">Close</button>
     </div>
     <p style="font-size:0.85rem; color:var(--text-muted);">Examples use the current API URL and key from the header. All endpoints except <code>/hello</code> require the <code>Api-Key</code> header.</p>
 
@@ -36,7 +36,7 @@
     </div>
 
     <div class="info-section">
-        <h3>6. Configure a watched input</h3>
+        <h3>6. Configure a watched input (fires a webhook on change)</h3>
         <p>Set GPIO 6 as a watched input. State changes send webhooks when a target is configured; with no webhook or bridge target, events are logged instead.</p>
         <div class="info-code-block" id="curl6"></div>
     </div>

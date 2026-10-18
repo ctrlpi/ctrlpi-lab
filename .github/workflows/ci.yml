@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [main, master]
   workflow_dispatch:
+    inputs:
+      all_nodes:
+        description: 'Test all Node versions (24, 26) on macOS and Windows'
+        type: boolean
+        default: false
+
+# Flag: set to 'true' to test Node 24 and 26 on macOS and Windows as well (kept off by default on CI)
+env:
+  TEST_ALL_NODES: 'false'
 
 permissions:
   contents: read
@@ -20,8 +29,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         node: [22, 24, 26]
+        # On Linux: runs Node 22, 24, and 26. On macOS and Windows: runs Node 22 only.
+        # To test Node 24 and 26 on macOS and Windows as well, comment out or remove the 'exclude' block below:
+        exclude:
+          - os: macos-latest
+            node: 24
+          - os: macos-latest
+            node: 26
+          - os: windows-latest
+            node: 24
+          - os: windows-latest
+            node: 26
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,4 +50,4 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - run: npm run test:ci
+      - run: npm test

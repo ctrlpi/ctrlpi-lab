@@ -1,6 +1,6 @@
 {
   "name": "@ctrlpi/ctrlpi-lab",
-  "version": "0.9.25",
+  "version": "0.9.26",
   "description": "A local browser dashboard for your ctrlPi setup. Test GPIO and sensor endpoints, watch webhook events, and tail agent logs, with zero dependencies.",
   "type": "module",
   "main": "ctrlpi-lab.js",
@@ -16,7 +16,8 @@
     "test": "node --test",
     "start": "node ctrlpi-lab.js",
     "run": "node ctrlpi-lab.js",
-    "test:ci": "npm test"
+    "test:ci": "npm test",
+    "prepublishOnly": "npm test"
   },
   "engines": {
     "node": ">=20"

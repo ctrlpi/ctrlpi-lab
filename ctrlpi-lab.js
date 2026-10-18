@@ -4,12 +4,14 @@ import http from "http";
 import { spawn, execFile } from "child_process";
 import dgram from "dgram";
 import fs from "fs";
+import net from "net";
 import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Opens the dashboard in the default browser on macOS, Windows or Linux.
 function openBrowser(url) {
   const plat = process.platform;
   if (plat === 'darwin') {
@@ -23,8 +25,8 @@ function openBrowser(url) {
 
 // --- Config file paths ---------------------------------------------------
 // Config files are stored in ~/.ctrlpi/ (or overridden via --config <path>):
-//   config.json      shared agent list ({name, ip, port, api_key}) across ctrlPi tools
-//   lab-config.json  dashboard state: selected_agent, mcp configuration, online_agents
+//   agents-config.json shared agent list ({name, ip, port, api_key, updated_at}) across ctrlPi tools
+//   lab-config.json    dashboard state: selected_agent, online_agents
 function resolveConfigFile(fileName) {
     const args = process.argv.slice(2);
     const i = args.indexOf("--config");
@@ -39,11 +41,14 @@ function resolveConfigFile(fileName) {
     return file;
 }
 
+// UTC "YYYY-MM-DD HH:MM:SS", the stamp format shared by every ctrlPi config file.
+function nowStamp() {
+    return new Date().toISOString().slice(0, 19).replace("T", " ");
+}
+
 const CONFIG_FILE = resolveConfigFile("lab-config.json");
-const SHARED_FILE = path.join(path.dirname(CONFIG_FILE), "config.json");
-const STATE_DIR = path.dirname(CONFIG_FILE);
+const SHARED_FILE = path.join(path.dirname(CONFIG_FILE), "agents-config.json");
 const PAGES_DIR = path.join(__dirname, "pages");
-const IMAGES_DIR = path.join(__dirname, "images");
 const portArgIndex = process.argv.indexOf("--port");
 if (portArgIndex >= 0 && (!process.argv[portArgIndex + 1] || process.argv[portArgIndex + 1].startsWith("--"))) {
     throw new Error("--port requires a port number, e.g. --port 7474");
@@ -60,81 +65,196 @@ const NO_STARTUP_SCAN = process.argv.includes("--no-startup-scan");
 const MAX_BODY = 64 * 1024;
 
 // ── small helpers ────────────────────────────────────────────────────
+// An error that carries the HTTP status the router answers with.
 class HttpError extends Error {
     constructor(status, detail) { super(detail); this.status = status; this.detail = detail; }
 }
 
-// Reads lab-config.json (selected_agent, mcp, online_agents).
+// Reads lab-config.json (selected_agent, online_agents).
 function readConfig() {
     if (fs.existsSync(CONFIG_FILE)) {
         try { return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf-8")); } catch { /* fall through */ }
     }
     return {};
 }
+// Writes lab-config.json as a whole.
 function writeConfig(data) {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(data, null, 2));
 }
 
-// Reads shared config.json (agents list).
-function readShared() {
-    if (fs.existsSync(SHARED_FILE)) {
-        try { return JSON.parse(fs.readFileSync(SHARED_FILE, "utf-8")); } catch { /* fall through */ }
+const HOMEBRIDGE_AGENTS_FILE = "/var/lib/homebridge/ctrlpi-agents-config.json";
+
+// Merges two agent lists by name: new names are added, and an existing entry is replaced
+// only when the overlay copy has a newer updated_at.
+function reconcileAgentList(baseAgents, overlayAgents) {
+    const list = Array.isArray(baseAgents) ? [...baseAgents] : [];
+    if (!Array.isArray(overlayAgents)) return list;
+    for (const overlay of overlayAgents) {
+        if (!overlay || !overlay.name) continue;
+        const idx = list.findIndex(a => a && a.name === overlay.name);
+        if (idx === -1) {
+            list.push({ ...overlay });
+        } else {
+            const existing = list[idx];
+            const overlayDate = overlay.updated_at || "";
+            const existingDate = existing.updated_at || "";
+            if (overlayDate > existingDate) {
+                list[idx] = { ...existing, ...overlay };
+            }
+        }
     }
-    return {};
+    return list;
 }
+
+// Reads the shared agents-config.json, then merges in newer entries from Homebridge's own
+// list (/var/lib/homebridge/ctrlpi-agents-config.json), which is only ever read.
+function readShared() {
+    let result = {};
+    if (fs.existsSync(SHARED_FILE)) {
+        try { result = JSON.parse(fs.readFileSync(SHARED_FILE, "utf-8")) || {}; } catch { /* fall through */ }
+    }
+    if (fs.existsSync(HOMEBRIDGE_AGENTS_FILE)) {
+        try {
+            const hb = JSON.parse(fs.readFileSync(HOMEBRIDGE_AGENTS_FILE, "utf-8"));
+            if (hb && Array.isArray(hb.agents)) {
+                result.agents = reconcileAgentList(result.agents || [], hb.agents);
+            }
+        } catch { /* ignore read error */ }
+    }
+    return result;
+}
+// Replaces only the agents key of the shared file, keeping anything else in it.
 function writeSharedAgents(agents) {
-    const shared = readShared();
+    let shared = {};
+    if (fs.existsSync(SHARED_FILE)) {
+        try { shared = JSON.parse(fs.readFileSync(SHARED_FILE, "utf-8")) || {}; } catch { /* fall through */ }
+    }
     shared.agents = agents;
     fs.writeFileSync(SHARED_FILE, JSON.stringify(shared, null, 2));
 }
 
 // ── config: agents / scan results ────────────────────────────────────
+// "http://host:port/" becomes "host:port".
 function stripScheme(v) {
     return String(v || "").trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
 }
 
-// Agent records use {name, ip, port, api_key}. Default agent port is 8314.
+// Agent records use {name, ip, port, api_key, updated_at}. Default agent port is 8314.
 const DEFAULT_AGENT_PORT = 8314;
 
+// The dashboard speaks URLs; these two convert to and from the stored ip + port pair.
 function agentToUrl(a) {
     if (!a || !a.ip) return "";
     const host = /:\/\//.test(a.ip) ? a.ip : `http://${a.ip}`;
     return `${host}:${a.port || DEFAULT_AGENT_PORT}`;
 }
-function urlToAgent(url, api_key = "", name = "") {
+function urlToAgent(url, api_key = "", name = "", updated_at = "") {
     let host = String(url || "").trim().replace(/\/+$/, "");
     let port = DEFAULT_AGENT_PORT;
     const m = host.match(/^(.*?):(\d+)$/);
     if (m && !/^https?:$/i.test(m[1])) { host = m[1]; port = Number(m[2]); }
     const ip = host.replace(/^http:\/\//i, "");
-    // mcp-bridge identifies agents by name; omit when not specified.
-    return { ...(name ? { name } : {}), ip, port, api_key: api_key || "" };
+    // Other ctrlPi tools find agents by name, so it is kept whenever known.
+    return {
+        ...(name ? { name } : {}),
+        ip,
+        port,
+        api_key: api_key || "",
+        updated_at: updated_at || nowStamp()
+    };
 }
 
-// Loads [{url, api_key, name?}] from shared config.json.
+// Loads [{url, api_key, name?, updated_at?}] from shared agents-config.json.
 function loadServers() {
     const raw = readShared().agents;
     return (Array.isArray(raw) ? raw : [])
-        .map(a => ({ url: agentToUrl(a), api_key: a.api_key || "", ...(a.name ? { name: a.name } : {}) }))
+        .map(a => ({
+            url: agentToUrl(a),
+            api_key: a.api_key || "",
+            ...(a.name ? { name: a.name } : {}),
+            ...(a.updated_at ? { updated_at: a.updated_at } : {})
+        }))
         .filter(s => s.url);
 }
+// Writes the list back to the shared file, one entry per URL, sorted.
 function saveServers(servers) {
     const merged = {};
     for (const s of servers) if (s.url) merged[s.url] = s;
     const agents = Object.keys(merged).sort()
-        .map(u => urlToAgent(u, merged[u].api_key, merged[u].name));
+        .map(u => urlToAgent(u, merged[u].api_key, merged[u].name, merged[u].updated_at));
     try { writeSharedAgents(agents); } catch { /* best effort */ }
 }
 // apiKey=null preserves an existing key (scan rediscovery); "" clears it.
 // name: agent name from /hello - stored when non-empty, preserved otherwise.
 function upsertServer(url, apiKey, name) {
-    const byUrl = {};
-    for (const s of loadServers()) byUrl[s.url] = s;
-    const existing = byUrl[url] || { url, api_key: "" };
-    if (apiKey !== null && apiKey !== undefined) existing.api_key = apiKey;
-    if (name) existing.name = name;
-    byUrl[url] = existing;
-    saveServers(Object.values(byUrl));
+    const servers = loadServers();
+    const cleanName = (name || "").trim();
+
+    // Reconciles agent when discovered under a new URL
+    let existing = null;
+    let oldUrl = null;
+    if (cleanName) {
+        const matchByName = servers.find(s => s.name === cleanName && s.url !== url);
+        if (matchByName) {
+            existing = { ...matchByName, url };
+            oldUrl = matchByName.url;
+        }
+    }
+
+    if (!existing) {
+        existing = servers.find(s => s.url === url) || { url, api_key: "" };
+    }
+
+    let changed = oldUrl ? true : !servers.some(s => s.url === url);
+    if (apiKey !== null && apiKey !== undefined && existing.api_key !== apiKey) {
+        existing.api_key = apiKey;
+        changed = true;
+    }
+    if (cleanName && existing.name !== cleanName) {
+        existing.name = cleanName;
+        changed = true;
+    }
+    if (changed || !existing.updated_at) {
+        existing.updated_at = nowStamp();
+    }
+
+    // Filter out oldUrl if moved, or replace url if existing
+    const updatedServers = servers
+        .filter(s => s.url !== url && (!oldUrl || s.url !== oldUrl));
+    updatedServers.push(existing);
+    saveServers(updatedServers);
+
+    if (oldUrl) {
+        const online = (loadOnlineAgents() || []).filter(u => u !== oldUrl);
+        saveOnlineAgents(online);
+
+        // If the moved agent was the currently selected agent, update its selected host/port
+        try {
+            const cfg = readConfig();
+            if (cfg.selected_agent && cfg.selected_agent.ip) {
+                const oldHost = stripScheme(oldUrl).split(":")[0];
+                const oldPort = stripScheme(oldUrl).split(":")[1] || "8314";
+                if (stripScheme(cfg.selected_agent.ip) === oldHost &&
+                    String(cfg.selected_agent.port ?? "8314") === oldPort) {
+                    const newHost = stripScheme(url).split(":")[0];
+                    const newPort = stripScheme(url).split(":")[1] || "8314";
+                    cfg.selected_agent.ip = newHost;
+                    cfg.selected_agent.port = Number(newPort) || newPort;
+                    writeConfig(cfg);
+                }
+            }
+        } catch { /* best effort */ }
+    }
+
+    return loadServers();
+}
+// Removes an agent from the shared list and from the scan history.
+function deleteServer(url) {
+    const norm = String(url || "").trim().replace(/\/+$/, "");
+    const servers = loadServers().filter(s => s.url !== norm);
+    saveServers(servers);
+    const online = (loadOnlineAgents() || []).filter(u => u !== norm);
+    saveOnlineAgents(online);
     return loadServers();
 }
 // Returns online agents from the most recent scan snapshot as URLs, or null if no scan has run.
@@ -144,6 +264,7 @@ function loadOnlineAgents() {
     const list = data.online_agents;
     return Array.isArray(list) ? list.map(e => `http://${stripScheme(e)}`) : list;
 }
+// Records what the last scan reached, as sorted "ip:port" strings.
 function saveOnlineAgents(found) {
     const data = readConfig();
     data.online_agents = [...found].map(stripScheme).sort();
@@ -164,31 +285,22 @@ function loadSelected() {
     return { ip, port, api_key: key };
 }
 
+// The selected agent as the dashboard's form fields expect it; API_KEY overrides the key.
 function getDefaultApiConfig() {
-    let mcpUrl = "http://localhost:8315";
-    let mcpKey = process.env.MCP_API_KEY;
-
-    const data = readConfig();
     const sel = loadSelected();
-    // Format agent target as URL for the dashboard.
     const apiHost = `http://${sel.ip}`;
     const apiPort = sel.port;
     const apiKey = process.env.API_KEY || sel.api_key;
-    const mcp = data.mcp || {};
-    if (mcp.ip) mcpUrl = `http://${stripScheme(mcp.ip)}:${mcp.port || 8315}`;
-    else if (mcp.url) mcpUrl = mcp.url;
-    if (!mcpKey) mcpKey = mcp.api_key;
-
     return {
         api_key: apiKey || "your-secret-key",
         api_host: apiHost,
         api_port: apiPort,
         api_url: `${apiHost}:${apiPort}`,
-        mcp: { url: mcpUrl, api_key: mcpKey || "your-mcp-key" },
     };
 }
 
 // ── merged dashboard HTML (recursive <!--INCLUDE:--> + in-memory cache) ─
+// Splices each <!--INCLUDE:path--> in place, up to ten levels deep.
 function resolveIncludes(html, baseDir, depth = 0) {
     if (depth > 10) return html;
     return html.replace(/<!--INCLUDE:([^>]+)-->/g, (_m, rel) => {
@@ -198,6 +310,7 @@ function resolveIncludes(html, baseDir, depth = 0) {
     });
 }
 let indexHtmlCache = null;
+// Builds the dashboard page once and caches it until /api/reload-cache.
 function loadIndexHtml() {
     const htmlPath = path.join(PAGES_DIR, "main.html");
     if (!fs.existsSync(htmlPath)) throw new HttpError(404, "pages/main.html file not found");
@@ -205,6 +318,7 @@ function loadIndexHtml() {
     return indexHtmlCache;
 }
 
+// Response helpers that always set the type and length.
 function sendJson(res, status, obj) {
     const body = JSON.stringify(obj);
     res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Content-Length": Buffer.byteLength(body) });
@@ -267,14 +381,14 @@ function sendStatic(res, root, filename) {
 }
 
 // ── route handlers ───────────────────────────────────────────────────
-// General HTTP proxy - forwards any method/body to the ?url= target, relaying the
-// Mcp-Session-Id response header the MCP Streamable HTTP transport relies on.
+// HTTP proxy for the dashboard: forwards the method, body and a few headers to the ?url=
+// target and relays its status, since the agents send no CORS headers.
 async function handleProxy(req, res, url) {
     const target = url.searchParams.get("url");
     if (!target) throw new HttpError(400, "url query param required");
 
     const forwardHeaders = {};
-    for (const name of ["api-key", "content-type", "accept", "mcp-session-id"]) {
+    for (const name of ["api-key", "content-type", "accept"]) {
         const val = req.headers[name];
         if (val) forwardHeaders[name] = val;
     }
@@ -293,9 +407,6 @@ async function handleProxy(req, res, url) {
         throw new HttpError(502, `Could not reach target: ${e.message}`);
     }
 
-    const sessionId = r.headers.get("mcp-session-id");
-    if (sessionId) res.setHeader("Mcp-Session-Id", sessionId);
-
     const text = await r.text();
     if ((r.headers.get("content-type") || "").includes("application/json")) {
         try { return sendJson(res, r.status, JSON.parse(text)); } catch { /* fall through */ }
@@ -303,6 +414,7 @@ async function handleProxy(req, res, url) {
     return sendJson(res, r.status, { text });
 }
 
+// Saves the agent the dashboard is pointed at (selected_agent in lab-config.json).
 async function handleSaveConfig(req, res) {
     const body = await readJsonBody(req, MAX_BODY);
     const data = readConfig();
@@ -315,65 +427,18 @@ async function handleSaveConfig(req, res) {
         if ("api_key" in body) sel.api_key = body.api_key;
         data.selected_agent = sel;
     }
-    // The MCP tab sends one URL; on disk it is ip + port, matching agents[] and selected.
-    const setMcpUrl = (mcp, url) => {
-        const bare = stripScheme(url);
-        const m = bare.match(/^(.*?):(\d+)$/);
-        mcp.ip = m ? m[1] : bare;
-        mcp.port = m ? Number(m[2]) : 8315;
-        delete mcp.url;
-    };
-    if (body.mcp && typeof body.mcp === "object") {
-        const mcp = data.mcp || {};
-        if ("url" in body.mcp) setMcpUrl(mcp, body.mcp.url);
-        if ("api_key" in body.mcp) mcp.api_key = body.mcp.api_key;
-        data.mcp = mcp;
-    }
-    if ("mcp_url" in body || "mcp_api_key" in body) {
-        const mcp = data.mcp || {};
-        if ("mcp_url" in body) setMcpUrl(mcp, body.mcp_url);
-        if ("mcp_api_key" in body) mcp.api_key = body.mcp_api_key;
-        data.mcp = mcp;
-    }
     try { writeConfig(data); sendJson(res, 200, { status: "success" }); }
     catch (e) { throw new HttpError(500, `Failed to save config: ${e.message}`); }
 }
 
-async function handleLogs(req, res, url) {
-    const parsedLimit = Number.parseInt(url.searchParams.get("limit") ?? "300", 10);
-    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 300;
-    const search = url.searchParams.get("search");
-    const category = url.searchParams.get("category");
-
-    const config = getDefaultApiConfig();
-    let data;
-    try {
-        const r = await fetch(`${config.api_url}/logs`, {
-            headers: { "Api-Key": config.api_key },
-            signal: AbortSignal.timeout(10000),
-        });
-        if (!r.ok) throw new HttpError(r.status, `Pi error: ${r.status}`);
-        data = await r.json();
-    } catch (e) {
-        if (e instanceof HttpError) throw e;
-        throw new HttpError(502, `Could not reach Pi: ${e.message}`);
-    }
-
-    const filtered = (data.logs || []).filter(line => {
-        if (!line) return false;
-        if (search && !line.toLowerCase().includes(String(search).toLowerCase())) return false;
-        if (category && category !== "ALL" && !line.includes(`[${category}]`)) return false;
-        return true;
-    });
-    sendJson(res, 200, { logs: filtered.slice(-limit) });
-}
-
+// GET /api/servers: the saved agents, the shared file's mtime and the scan history.
 function handleServersGet(res) {
     // The agent list lives in the shared file, so that is the one whose mtime says whether
     // it changed (another project may have updated it since this page loaded).
     const lastModified = fs.existsSync(SHARED_FILE) ? fs.statSync(SHARED_FILE).mtimeMs / 1000 : null;
     sendJson(res, 200, { servers: loadServers(), last_modified: lastModified, online_agents: loadOnlineAgents() });
 }
+// POST /api/servers: adds or updates one agent and marks it online.
 async function handleServersPost(req, res) {
     const body = await readJsonBody(req, MAX_BODY);
     const url = ((body.url || "").trim()).replace(/\/+$/, "");
@@ -387,6 +452,18 @@ async function handleServersPost(req, res) {
         saveOnlineAgents(online);
     }
     
+    sendJson(res, 200, { servers, online_agents: loadOnlineAgents() });
+}
+// DELETE /api/servers: the URL comes from the query or the JSON body.
+async function handleServersDelete(req, res, url) {
+    let target = url.searchParams.get("url");
+    if (!target) {
+        const body = await readJsonBody(req, MAX_BODY).catch(() => ({}));
+        target = body.url;
+    }
+    const cleanUrl = ((target || "").trim()).replace(/\/+$/, "");
+    if (!cleanUrl) throw new HttpError(400, "url is required");
+    const servers = deleteServer(cleanUrl);
     sendJson(res, 200, { servers, online_agents: loadOnlineAgents() });
 }
 
@@ -430,6 +507,7 @@ async function scanSubnet(port = 8314, announce = false, onFound = () => {}) {
     return { subnet: `${prefix}.0/24`, found: [...found].sort(), names };
 }
 
+// True when the agent accepts the shipped default key on an authenticated route.
 async function defaultKeyWorks(baseUrl) {
     try {
         const r = await fetch(`${baseUrl}/config/read`, {
@@ -442,6 +520,8 @@ async function defaultKeyWorks(baseUrl) {
     }
 }
 
+// GET /api/scan: with stream=1 it answers NDJSON, one "agent" event per find and a
+// final "done", so the page can connect before the sweep ends.
 async function handleScan(req, res, url) {
     const port = parseInt(url.searchParams.get("port") ?? "8314", 10);
     if (!Number.isInteger(port) || port < 1 || port > 65535) throw new HttpError(400, "Invalid port");
@@ -465,14 +545,34 @@ async function handleScan(req, res, url) {
     sendJson(res, 200, result);
 }
 
+// ── request guard ───────────────────────────────────────────────────
+// Against DNS rebinding: another domain pointed at this machine still sends its own name as
+// Host. IP addresses, localhost, this machine's name (with or without .local) and the
+// --host value pass; anything else is refused.
+function hostAllowed(hostHeader, hostname = os.hostname()) {
+    const match = /^(?:\[([0-9a-f:.]+)\]|([a-z0-9.-]+))(?::\d+)?$/i.exec(String(hostHeader || ""));
+    if (!match) return false;
+    const name = (match[1] || match[2]).toLowerCase().replace(/\.$/, "");
+    if (net.isIP(name) || name === "localhost") return true;
+    const own = String(hostname || "").toLowerCase().replace(/\.local$/, "");
+    if (own && (name === own || name === own + ".local")) return true;
+    return name === String(HOST).toLowerCase();
+}
+function originHost(origin) {
+    try { return new URL(origin).host; } catch { return null; }
+}
+
 // ── router ───────────────────────────────────────────────────────────
+// Routes one request; any HttpError becomes a JSON {error} answer.
 async function dispatch(req, res) {
-    // CORS: allow all for local dashboard development.
-    res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Allow-Methods", "*");
-    res.setHeader("Access-Control-Allow-Headers", "*");
-    if (req.method === "OPTIONS") { res.writeHead(200); res.end(); return; }
+    // Only the dashboard's own page may call it: no CORS headers, an allowed Host, and an
+    // Origin (when sent) that matches the Host.
+    if (!hostAllowed(req.headers.host)) {
+        return sendJson(res, 403, { error: "Host not allowed. Open ctrlpi-lab by IP address or localhost." });
+    }
+    if (req.headers.origin && originHost(req.headers.origin) !== req.headers.host) {
+        return sendJson(res, 403, { error: "Cross-origin request rejected" });
+    }
 
     const url = new URL(req.url, "http://localhost");
     const p = url.pathname;
@@ -491,11 +591,10 @@ async function dispatch(req, res) {
             return sendJson(res, 200, { ...getDefaultApiConfig(), local_network_prefix: localNetworkPrefix, dev_mode: process.env.NODE_ENV === "development" });
         }
         if (p === "/api/save-config" && m === "POST") return await handleSaveConfig(req, res);
-        if (p === "/api/logs" && m === "GET") return await handleLogs(req, res, url);
         if (p === "/api/servers" && m === "GET") return handleServersGet(res);
         if (p === "/api/servers" && m === "POST") return await handleServersPost(req, res);
+        if (p === "/api/servers" && m === "DELETE") return await handleServersDelete(req, res, url);
         if (p === "/api/scan" && m === "GET") return await handleScan(req, res, url);
-        if (p.startsWith("/images/") && m === "GET") return sendStatic(res, IMAGES_DIR, decodeURIComponent(p.slice("/images/".length)));
         if (p.startsWith("/pages/") && m === "GET") return sendStatic(res, PAGES_DIR, decodeURIComponent(p.slice("/pages/".length)));
         throw new HttpError(404, "not found");
     } catch (err) {
@@ -506,16 +605,44 @@ async function dispatch(req, res) {
 }
 
 // ── utilities ────────────────────────────────────────────────────────
+// The LAN address: a UDP socket "connected" to 8.8.8.8 (nothing is sent) shows the
+// routing choice; offline, the first non-internal IPv4 interface is used instead.
 function detectLocalIp() {
     return new Promise((resolve, reject) => {
+        const fallback = () => {
+            try {
+                const ifaces = os.networkInterfaces();
+                for (const list of Object.values(ifaces)) {
+                    for (const iface of list || []) {
+                        if ((iface.family === "IPv4" || iface.family === 4) && !iface.internal && iface.address && !iface.address.startsWith("127.")) {
+                            return resolve(iface.address);
+                        }
+                    }
+                }
+            } catch { /* ignore */ }
+            reject(new Error("no network interface with an IPv4 address"));
+        };
+
         const s = dgram.createSocket("udp4");
-        s.once("error", e => { try { s.close(); } catch { /* ignore */ } reject(e); });
+        s.once("error", () => {
+            try { s.close(); } catch { /* ignore */ }
+            fallback();
+        });
         try {
             s.connect(80, "8.8.8.8", () => {
-                try { const ip = s.address().address; s.close(); resolve(ip); }
-                catch (e) { try { s.close(); } catch { /* ignore */ } reject(e); }
+                try {
+                    const ip = s.address().address;
+                    s.close();
+                    if (ip && ip !== "0.0.0.0" && !ip.startsWith("127.")) return resolve(ip);
+                } catch {
+                    try { s.close(); } catch { /* ignore */ }
+                }
+                fallback();
             });
-        } catch (e) { try { s.close(); } catch { /* ignore */ } reject(e); }
+        } catch {
+            try { s.close(); } catch { /* ignore */ }
+            fallback();
+        }
     });
 }
 
@@ -543,7 +670,7 @@ async function startupScan() {
         try {
             const stats = await fs.promises.stat(SHARED_FILE);
             if (Date.now() - stats.mtimeMs < 5 * 60 * 1000) {
-                console.log("Startup scan skipped: config.json was updated less than 5 minutes ago. Running quick reachability test.");
+                console.log("Startup scan skipped: agents-config.json was updated less than 5 minutes ago. Running quick reachability test.");
                 const saved = loadServers();
                 const alive = [];
                 await Promise.all(saved.map(async s => {
@@ -575,6 +702,7 @@ server.listen(PORT, HOST, () => {
     if (!NO_OPEN) openBrowser(localAddr);
     if (!NO_STARTUP_SCAN) startupScan();
 });
+// Closes the server, forcing the exit after one second if connections linger.
 function shutdown() { server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 1000); }
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);

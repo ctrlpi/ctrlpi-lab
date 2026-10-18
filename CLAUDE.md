@@ -2,16 +2,13 @@
 
 ## Project and scope
 
-ctrlpi-lab is a local dashboard for `pi-gpio-api` and `pico-gpio-api`. It serves a
+ctrlpi-lab is a local dashboard for `pi-gpio-api`, `pico-gpio-api` and `esp32-gpio-api`. It serves a
 three-tab SPA: **API**, **Logs**, and **Webhooks**. It is not a GPIO agent.
 `ctrlpi-lab.js` uses Node’s built-in HTTP server and fetch; there are no runtime dependencies.
 Node 20+ is required. Python 3 is required for integration tests. There are no npm
 runtime or development dependencies; no installation step is needed.
 
-The backend retains MCP configuration fields and some unused MCP code. There is
-currently no MCP pane file, visible MCP tab, or registered `/api/mcp/stdio/*` route.
-Do not describe those as working features. MCP integrations use the separate
-`mcp-bridge` project.
+There is no MCP tab and no MCP code: MCP clients use the separate `mcp-bridge` project.
 
 ## Running and refreshing
 
@@ -42,15 +39,14 @@ pages/main.html              CSS, header/nav, endpoint definitions, shared brows
 pages/api.html               REST tester pane
 pages/logs.html              Log toolbar and terminal
 pages/webhooks.html          Webhook Events toolbar and table
-pages/welcome.html           Overview, quick start, Pi/Pico installation instructions
+pages/welcome.html           Overview, quick start, Pi/Pico/ESP32 and mcp-bridge installation
 pages/api_curl.html          Nine cURL example containers
-pages/*Pinout.html           Board reference diagrams
 
 test/dashboard.test.js       Browser-function tests using a small DOM/fetch stub
 test/scan.test.js            Isolated incremental-discovery test
 test/integration.test.js     Real lab server + mock-agent HTTP tests
 test/helpers/dashboard.js   Assembles/evaluates dashboard scripts for tests
-test/fixtures/mock_agent.py  Copy of ctrlpi-cli’s Python mock agent
+test/fixtures/mock_agent.py  The shared Python mock agent
 .github/workflows/ci.yml     GitHub Actions test matrix
 ```
 
@@ -58,14 +54,16 @@ test/fixtures/mock_agent.py  Copy of ctrlpi-cli’s Python mock agent
 
 Configuration defaults to `~/.ctrlpi/`, never the checkout. `--config` accepts a
 directory for both files or a JSON path for the lab file, with the shared file in
-the same directory. Page/image assets always resolve relative to `ctrlpi-lab.js`.
+the same directory. Page files always resolve relative to `ctrlpi-lab.js`.
+When reading shared agents, `ctrlpi-lab` checks if `/var/lib/homebridge/ctrlpi-agents-config.json`
+exists, reading it read-only and reconciling agents whose `updated_at` is newer. It never writes to the Homebridge path.
 
-Shared `config.json`:
+Shared `agents-config.json`:
 
 ```json
 {
   "agents": [
-    { "name": "pi5", "ip": "192.168.1.50", "port": 8314, "api_key": "agent-key" }
+    { "name": "pi5", "ip": "192.168.1.50", "port": 8314, "api_key": "agent-key", "updated_at": "2026-10-11 12:00:00" }
   ]
 }
 ```
@@ -75,16 +73,13 @@ Dashboard-owned `lab-config.json`:
 ```json
 {
   "selected_agent": { "ip": "192.168.1.50", "port": 8314 },
-  "online_agents": ["192.168.1.50:8314"],
-  "mcp": { "ip": "localhost", "port": 8315, "api_key": "mcp-key" }
+  "online_agents": ["192.168.1.50:8314"]
 }
 ```
 
-The optional MCP section is retained for compatibility. Agent and MCP keys are
-separate. Backend defaults prefer `API_KEY`, then an explicit
-`selected_agent.api_key`, then the matching shared agent’s key, finally
-`your-secret-key`. MCP defaults use `MCP_API_KEY`, then the saved MCP key, finally
-`your-mcp-key`.
+Backend defaults prefer `API_KEY`, then an explicit `selected_agent.api_key`, then the
+matching shared agent’s key, finally `your-secret-key`. The shared file is read only from
+its own name: there is no fallback to an older `config.json`.
 
 Persist addresses as `ip` + numeric `port`; `online_agents` holds `ip:port` strings.
 The frontend/API wire format uses URLs, converted at the persistence boundary by
@@ -124,25 +119,34 @@ due to CORS. Reject invalid keys and failed verification without saving or closi
 | `GET /` | Cached assembled dashboard |
 | `POST /api/reload-cache` | Rebuild HTML cache |
 | `GET /api/default-config` | Connection defaults, network prefix, development-mode flag |
-| `POST /api/save-config` | Persist selected agent and/or MCP settings |
+| `POST /api/save-config` | Persist the selected agent |
 | `GET /api/servers` | Saved agent list and scan history |
 | `POST /api/servers` | Add/update a shared agent record |
+| `DELETE /api/servers` | Remove a shared agent record and scan history |
 | `GET /api/scan?port=8314` | Discover agents; `stream=1` enables NDJSON |
-| `GET /api/logs` | Read configured agent logs; apply limit/search/category query filters |
 | `* /api/proxy/url?url=...` | Relay method, body, allowed headers, and upstream HTTP status |
-| `GET /images/*`, `GET /pages/*` | Static assets |
+| `GET /pages/*` | Static page files |
 
-The proxy forwards `Api-Key`, content type, accept, and MCP session headers. It
-returns upstream failures with their status and connection failures as 502. JSON
-body parsing rejects malformed input; request bodies are capped at 64 KiB.
+The proxy forwards `Api-Key`, content type and accept. It returns upstream failures with
+their status and connection failures as 502. JSON body parsing rejects malformed input;
+request bodies are capped at 64 KiB.
+
+**Request guard (`dispatch()`).** No CORS headers are sent. `hostAllowed()` answers 403
+unless the `Host` is an IP address, `localhost`, `os.hostname()` (with or without `.local`)
+or the `--host` value, which blocks DNS rebinding; an `Origin`, when sent, must equal the
+`Host`. Without this a web page could read `/api/default-config` (it holds the agent key)
+and drive the LAN through the proxy. Keep both checks in front of every route.
 
 ## Frontend behavior
 
 - **API:** endpoint definitions live in `pages/main.html`. Requests target the header’s
   selected agent through `piApiFetch`. Config Update has only one API-key change
   control, in the red Danger Zone; do not re-add an ordinary `api_key` body field.
+  GPIO path fields accept any pin number, since each agent checks it against its own board
+  (Pico GP0-28, ESP32 up to 48). `value` and `init` 1/0 are sent as numbers: the MicroPython
+  agents and `lite.py` refuse them as text.
 - **Logs:** reads the selected agent’s `/logs` via `piApiFetch`, filters search text
-  in the browser, and hides polling entries. It does not use the `/api/logs` helper.
+  in the browser, and hides polling entries.
   Keep compact line spacing and orange `[webhook]`/`[webhock]` tags. No category buttons.
   Reset and refresh are accessible icon-only buttons after search; trash is red.
   Reset asks for confirmation, reads the agent config, sets `log_days=0`, then restores it.
@@ -168,9 +172,8 @@ npm run test:ci
 
 `npm test` runs `node --test`, which discovers the test files without shell glob expansion
 (including on Windows). Python defaults to
-`python3`; set `PYTHON` to override it. The integration fixture was copied from
-`../ctrlpi-cli/mock_agent.py` following relevant concepts in `../BRIDGE_TESTING_GUIDE.md`.
-Only its header and actual bound-port announcement differ from the source copy.
+`python3`; set `PYTHON` to override it. The integration fixture `test/fixtures/mock_agent.py` is the shared mock agent:
+ctrlpi-cli, mcp-bridge, homekit-bridge and matter-bridge keep identical copies, so change them all together.
 
 Integration tests spawn the real lab server and Python mock on OS-assigned loopback
 ports. Use temporary configs, `HOST=127.0.0.1`, `PORT=0`, `--no-open`, and
@@ -192,5 +195,4 @@ confirm a GitHub-hosted CI run.
 Covered areas include discovery/selection, manual agent validation, HTTP proxy behavior,
 GPIO state changes, sensors, config/key changes, shared-config preservation, logs,
 webhook rendering, and poll timers. Remaining gaps include a real browser/visual layout,
-hardware timing, LAN discovery over actual interfaces, external webhook delivery, and
-MCP bridge interoperability. Test relevant behavior rather than merely matching implementation.
+hardware timing, LAN discovery over actual interfaces, and external webhook delivery. Test relevant behavior rather than merely matching implementation.

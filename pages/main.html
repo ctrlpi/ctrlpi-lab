@@ -14,6 +14,7 @@
         rel="stylesheet">
 
     <style>
+        /* Theme colors: light by default, overridden under body.dark-mode. */
         :root {
             /* Bright (Light) Mode Variables (DEFAULT) */
             --bg-dark: #f0f2f5;
@@ -51,6 +52,7 @@
             --border-terminal: rgba(255, 255, 255, 0.08);
         }
 
+        /* Dark theme values for the same variables. */
         body.dark-mode {
             /* Dark Mode Variables Override */
             --bg-dark: #07060d;
@@ -169,6 +171,7 @@
             align-items: center;
         }
 
+        /* Header: logo, agent name and board model. */
         .logo-group {
             min-width: 0;
             display: flex;
@@ -237,6 +240,7 @@
             top: 3px;
         }
 
+        /* Agent name and board model next to the logo. */
         #logoDeviceName, #logoDeviceModel {
             max-width: 180px;
             overflow: hidden;
@@ -269,6 +273,7 @@
             pointer-events: all;
         }
 
+        /* Header: agent picker, address and port fields. */
         .config-input-group {
             display: flex;
             align-items: center;
@@ -299,6 +304,7 @@
             text-align: center;
         }
 
+        /* The key field in the saved-key editor. */
         #apiKeyInput {
             width: 100%;
         }
@@ -316,6 +322,7 @@
             box-shadow: 0 0 6px var(--primary-glow);
         }
 
+        /* Header: the connection status badge. */
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -486,6 +493,7 @@
             animation: spin 1s linear infinite;
         }
 
+        /* Short pop-up messages. */
         .toast-popup {
             position: fixed;
             top: 24px;
@@ -524,10 +532,6 @@
            merely clicking/selecting a transport stays uncolored. */
 
 
-        /* MCP URL shown as read-only text once connected over HTTP */
-
-        /* MCP HTTP address dialog */
-
         /* Saved Servers Dropdown */
         .servers-dd-wrap {
             position: relative;
@@ -561,6 +565,7 @@
             background: #334155;
             color: #e2e8f0;
         }
+        /* Agent picker drop-down. */
         .servers-dd-panel {
             display: none;
             position: absolute;
@@ -586,10 +591,11 @@
             font-size: 0.82rem;
             font-family: monospace;
             color: var(--text, #1e293b);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
             border-bottom: 1px solid var(--border, #e2e8f0);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
         }
         .servers-dd-item:last-child { border-bottom: none; }
         .servers-dd-item:hover {
@@ -597,6 +603,39 @@
         }
         body.dark-mode .servers-dd-item { color: #e2e8f0; }
         body.dark-mode .servers-dd-item:hover { background: #334155; }
+        .servers-dd-item-content {
+            flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .servers-dd-delete-btn {
+            background: transparent;
+            border: none;
+            color: var(--danger, #dc2626);
+            cursor: pointer;
+            padding: 3px 5px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.75;
+            transition: opacity 0.15s ease, background 0.15s ease, transform 0.15s ease;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        .servers-dd-delete-btn:hover {
+            opacity: 1;
+            background: rgba(220, 38, 38, 0.12);
+            transform: scale(1.15);
+        }
+        body.dark-mode .servers-dd-delete-btn {
+            color: var(--danger, #ef4444);
+        }
+        body.dark-mode .servers-dd-delete-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
         .servers-dd-empty {
             padding: 10px 12px;
             font-size: 0.8rem;
@@ -646,6 +685,7 @@
             fill: currentColor;
         }
 
+        /* The saved-key editor and the add-agent dialog. */
         .api-key-panel {
             padding: 12px;
             min-width: 240px;
@@ -823,6 +863,7 @@
             background: rgba(0, 0, 0, 0.2);
         }
 
+        /* Tabs: API, Logs, Webhooks. */
         .tab-link {
             text-decoration: none;
             color: #707f94;
@@ -867,6 +908,7 @@
             position: relative;
         }
 
+        /* One pane per tab; only the active one is shown. */
         .pane {
             display: none;
             opacity: 0;
@@ -881,7 +923,7 @@
             opacity: 1;
         }
 
-        /* Page 1: OpenAPI Tester Panel & MCP Panel Layout */
+        /* Page 1: API Tester Panel Layout */
         #testerPane {
             grid-template-columns: 320px 1fr;
         }
@@ -911,6 +953,7 @@
             letter-spacing: 0.5px;
         }
 
+        /* API sidebar: endpoint search. */
         .search-box {
             position: relative;
             display: flex;
@@ -952,7 +995,7 @@
             gap: 10px;
         }
 
-        /* Info panels (Welcome / MCP Setup / API CURL) */
+        /* Info panels (Welcome / API cURL) */
         .info-panel {
             display: none;
             flex-direction: column;
@@ -1040,32 +1083,105 @@
 
         .info-cards {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
         }
 
         .info-card {
             background: var(--bg-card);
             border: 1px solid var(--border-muted);
-            border-radius: 10px;
-            padding: 14px 16px;
+            border-radius: 12px;
+            padding: 18px 20px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 8px;
+            box-shadow: 0 2px 8px var(--card-shadow);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+        }
+
+        .info-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-glow);
+            box-shadow: 0 4px 14px var(--card-shadow);
+        }
+
+        .info-card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+        }
+
+        .info-card-icon svg {
+            width: 22px;
+            height: 22px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.6;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .info-card-icon.i-green {
+            background: rgba(16, 185, 129, 0.14);
+            color: #10b981;
+        }
+
+        .info-card-icon.i-violet {
+            background: rgba(139, 92, 246, 0.13);
+            color: #8b5cf6;
+        }
+
+        .info-card-icon.i-rose {
+            background: rgba(236, 72, 153, 0.12);
+            color: #ec4899;
         }
 
         .info-card-title {
-            font-size: 0.82rem;
-            font-weight: 600;
+            font-size: 0.92rem;
+            font-weight: 700;
             color: var(--text-main);
         }
 
         .info-card-desc {
-            font-size: 0.78rem;
+            font-size: 0.82rem;
             color: var(--text-muted);
-            line-height: 1.5;
+            line-height: 1.55;
         }
 
+        .info-flow {
+            margin-top: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .info-flow-pre {
+            background: var(--bg-terminal);
+            color: var(--text-terminal);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            line-height: 1.6;
+            padding: 16px 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            border: 1px solid var(--border-terminal);
+            margin: 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .c-blue   { color: #3b82f6; font-weight: 600; }
+        .c-green  { color: #10b981; font-weight: 600; }
+        .c-cyan   { color: #06b6d4; font-weight: 600; }
+        .c-violet { color: #8b5cf6; font-weight: 600; }
+        .c-rose   { color: #ec4899; font-weight: 600; }
+        .c-mut    { color: #94a3b8; }
+
+        /* API sidebar: Get Started links (Welcome, cURL, Pinouts). */
         .pinout-link {
             display: flex;
             align-items: center;
@@ -1077,6 +1193,11 @@
             font-size: 0.82rem;
             cursor: pointer;
             transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .pinout-link:visited {
+            color: var(--text-muted);
         }
 
         .pinout-link:hover {
@@ -1096,6 +1217,7 @@
             color: var(--text-main);
         }
 
+        /* API sidebar: endpoint list, grouped by category. */
         .endpoint-category-title {
             font-size: 0.75rem;
             font-weight: 700;
@@ -1139,6 +1261,7 @@
             border-color: rgba(52, 211, 153, 0.3);
         }
 
+        /* GET / POST badges. */
         .method-badge {
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.65rem;
@@ -1202,6 +1325,7 @@
             transition: background 0.3s ease;
         }
 
+        /* Workbench header: method badge, path and description. */
         .workbench-header {
             padding: 24px 32px;
             border-bottom: 1px solid var(--border-muted);
@@ -1283,6 +1407,7 @@
             fill: var(--primary-hover);
         }
 
+        /* Workbench cards: request form and response. */
         .glass-card {
             background: var(--bg-card);
             border: 1px solid var(--border-muted);
@@ -1330,10 +1455,6 @@
         }
 
 
-        #mcpPane .workbench-body.focus-request .glass-card.response-card {
-            flex: 1 1 0%;
-        }
-
         /* Parameters Form styling */
         .params-form {
             display: flex;
@@ -1344,6 +1465,7 @@
             padding-right: 8px;
         }
 
+        /* Request form fields. */
         .parameter-group {
             display: flex;
             flex-direction: column;
@@ -1417,6 +1539,7 @@
             box-shadow: 0 0 6px rgba(229, 62, 62, 0.4);
         }
 
+        /* Note under a GPIO field that holds a value the route cannot take. */
         .gpio-range-note {
             color: #e53e3e;
             font-size: 0.76rem;
@@ -1425,6 +1548,7 @@
             margin-top: 3px;
         }
 
+        /* Select fields. */
         .param-select {
             appearance: none;
             -webkit-appearance: none;
@@ -1447,6 +1571,7 @@
             margin-top: 6px;
         }
 
+        /* Quick-pick buttons under GPIO and sensor fields. */
         .quick-btn {
             background: rgba(0, 0, 0, 0.02);
             border: 1px solid var(--border-muted);
@@ -1490,6 +1615,7 @@
             gap: 2px;
         }
 
+        /* On/off switch for boolean fields. */
         .toggle-switch {
             position: relative;
             display: inline-block;
@@ -1504,6 +1630,7 @@
             height: 0;
         }
 
+        /* The moving part of the on/off switch. */
         .slider {
             position: absolute;
             cursor: pointer;
@@ -1655,6 +1782,7 @@
             background: var(--primary);
         }
 
+        /* Raw JSON body editor. */
         .raw-json-editor {
             width: 100%;
             height: 200px;
@@ -1691,6 +1819,7 @@
             border-radius: 10px;
         }
 
+        /* Response status, time and size. */
         .resp-meta-item {
             display: flex;
             align-items: center;
@@ -1753,6 +1882,7 @@
             font-weight: 600;
         }
 
+        /* Copy buttons on responses and examples. */
         .copy-btn {
             background: none;
             border: none;
@@ -1775,6 +1905,7 @@
             fill: currentColor;
         }
 
+        /* Syntax-colored JSON in the response view. */
         .json-content {
             flex-grow: 1;
             padding: 16px;
@@ -1913,6 +2044,7 @@
             gap: 24px;
         }
 
+        /* Webhooks tab: the events table. */
         .webhook-table-wrap {
             background: var(--bg-card);
             border: 1px solid var(--border-muted);
@@ -1975,6 +2107,7 @@
             transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
+        /* Logs and Webhooks toolbars: search, refresh and polling rate. */
         .toolbar-left-group {
             display: flex;
             align-items: center;
@@ -2028,6 +2161,7 @@
             fill: var(--text-dark);
         }
 
+        /* Right side of the toolbars: auto-scroll and polling rate. */
         .toolbar-right-group {
             display: flex;
             align-items: center;
@@ -2054,6 +2188,7 @@
             font-weight: 600;
         }
 
+        /* Polling rate picker (3s to Manual). */
         .refresh-rate-group {
             display: flex;
             align-items: center;
@@ -2077,6 +2212,7 @@
             border-color: var(--accent);
         }
 
+        /* Shared action buttons. */
         .btn-action {
             background: var(--bg-input);
             border: 1px solid var(--border-muted);
@@ -2185,6 +2321,7 @@
             flex: 1;
         }
 
+        /* Result line of the API key change in the Danger Zone. */
         .danger-zone-result {
             margin-top: 10px;
             font-size: 0.78rem;
@@ -2239,6 +2376,7 @@
             border-radius: 50%;
         }
 
+        /* Table cell accents. */
         .td-red {
             background: #ff5f56;
         }
@@ -2251,6 +2389,7 @@
             background: #27c93f;
         }
 
+        /* Logs tab: the terminal-style log view. */
         .terminal-title {
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.78rem;
@@ -2271,6 +2410,7 @@
             color: var(--text-terminal);
         }
 
+        /* The scrolling log area. */
         #logTerminalScreen {
             gap: 0;
             line-height: 1.35;
@@ -2391,6 +2531,7 @@
             }
         }
 
+        /* Spin animation for refresh icons. */
         .rotate-anim {
             animation: spin 0.8s ease-in-out;
         }
@@ -2412,7 +2553,7 @@
         .agent-picker-btn:hover { color: var(--primary); }
         .agent-picker .theme-toggle-btn { color: var(--primary); margin: 0; width: 26px; }
         .agent-picker #savedServersPanel { width: max-content; max-width: min(620px, calc(100vw - 48px)); max-height: 300px; overflow-y: auto; }
-        .servers-dd-item { display: block; width: 100%; text-align: left; background: transparent; border: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
+        .servers-dd-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--border-muted, #334155); white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
         .header-right nav { white-space: nowrap; }
         .add-agent-dialog { width: min(420px, calc(100vw - 32px)); margin: auto; padding: 24px; border: 1px solid var(--border-muted); border-radius: 16px; background: var(--bg-deep); color: var(--text-main); box-shadow: 0 20px 80px #0004; }
         .add-agent-dialog::backdrop { background: #0007; backdrop-filter: blur(3px); }
@@ -2481,6 +2622,7 @@
                         <span id="agentAddress">localhost:8314</span>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
                     </button>
+                    <!-- Agent picker, filled by renderServersDropdown() -->
                     <div id="savedServersPanel" class="servers-dd-panel"></div>
         <!-- Selected agent API key -->
         <div class="key-dd-wrap">
@@ -2563,6 +2705,7 @@
     <input type="hidden" id="apiHostInput" value="http://localhost">
     <input type="hidden" id="apiPortInput" value="8314">
 
+    <!-- + dialog: add an agent by address, port and key -->
     <dialog id="addAgentDialog" class="add-agent-dialog" aria-labelledby="addAgentTitle" oncancel="if(document.getElementById('addAgentSubmit').disabled)event.preventDefault()">
         <form onsubmit="event.preventDefault(); saveNewAgent()">
             <h2 id="addAgentTitle">Add agent</h2>
@@ -2581,6 +2724,7 @@
         </form>
     </dialog>
 
+    <!-- Saved-key editor for the selected agent -->
     <dialog id="apiKeyDialog" class="add-agent-dialog" aria-labelledby="apiKeyDialogTitle" oncancel="cancelApiKeyEdit()">
         <form onsubmit="event.preventDefault(); saveApiKey()">
             <h2 id="apiKeyDialogTitle">API Key</h2>
@@ -2608,8 +2752,16 @@
 
     <!-- Global Application Scripts -->
     <script>
-        // API Endpoint definitions with comprehensive parameters configurations
+        // Every agent route the API tab offers, in sidebar order. Each entry drives the form:
+        //   pathParams / queryParams  fields that fill {name} in the path or the query string
+        //   bodyFields                JSON body fields; type is text, number, select or boolean
+        //     conditionalOn           shown and sent only while another field has one of these values
+        //     sendEmpty               sent even when left empty (clears the value on the agent)
+        //     quickOptions            pick buttons, filled from the agent's current pins or sensors
+        //   defaultBody               the starting raw JSON body
+        //   autoSend                  a quick-pick button also sends the request
         const endpoints = [
+            // GPIO: read, write and configure pins.
             {
                 id: 'read_gpio_all',
                 method: 'GET',
@@ -2676,7 +2828,7 @@
                 id: 'config_gpio',
                 method: 'POST',
                 path: '/gpio/config/{gpio}',
-                description: 'Configure setup parameters for a GPIO pin, such as custom alias names, initial direction/states, maximum safe pulse duration limits, and active-low logic reversal.',
+                description: 'Configure setup parameters for a GPIO pin, such as custom alias names, initial direction/states, maximum safe pulse duration limits, and active-low logic reversal. Set parameters, or enable "remove" to delete its configuration.',
                 pathParams: [
                     {
                         name: 'gpio',
@@ -2762,6 +2914,14 @@
                         conditionalOn: { field: 'type', values: ['output', 'input'] },
                         description: 'Watch for state changes and POST to the configured webhook URL. With no webhook URL configured, watched events are logged on the agent instead of sent.',
                         default: false
+                    },
+                    {
+                        name: 'remove',
+                        type: 'boolean',
+                        required: false,
+                        description: 'Delete this pin configuration.',
+                        default: false,
+                        onchange: 'onGpioRemoveChange(this.checked)'
                     }
                 ],
                 defaultBody: {
@@ -2769,9 +2929,11 @@
                     type: "output",
                     init: "None",
                     max: null,
-                    reversed: false
+                    reversed: false,
+                    remove: false
                 }
             },
+            // GPIO: watched pins and the board's pin scan.
             {
                 id: 'get_watched_gpio',
                 method: 'GET',
@@ -2784,6 +2946,7 @@
                 path: '/gpio/scan',
                 description: 'Scan and return configurations and values for all currently active GPIO pins.'
             },
+            // Sensors: scripts in the agent's scripts/ folder.
             {
                 id: 'config_sensor',
                 method: 'POST',
@@ -2844,6 +3007,7 @@
                     }
                 ]
             },
+            // Agent: health check, configuration, upgrade, restart and logs.
             {
                 id: 'hello',
                 method: 'GET',
@@ -2854,13 +3018,13 @@
                 id: 'get_config',
                 method: 'GET',
                 path: '/config/read',
-                description: 'Retrieve current global configuration parameters, including API, docs availability status, and Webhook target endpoint.'
+                description: 'Read the stored configuration (name, pins, sensors, notifications, bridges and settings, never the API key) plus the live agent block: platform, IP, Wi-Fi, uptime and version.'
             },
             {
                 id: 'set_config',
                 method: 'POST',
                 path: '/config/update',
-                description: 'Dynamically update app behaviors: rename the agent, enable/disable docs pages, enable/disable the REST API, or configure the Webhook endpoint. Fields may be sent ungrouped (as below) - the agent routes each into its group (notifications / settings / bridges).',
+                description: 'Change part of the configuration: rename the agent, set the webhook or a bridge callback, turn the docs pages or logging on or off, or change log retention. Fields may be sent ungrouped (as below) - the agent routes each into its group (notifications / settings / bridges).',
                 bodyType: 'json',
                 bodyFields: [
                     {
@@ -2914,7 +3078,7 @@
                         type: 'text',
                         required: false,
                         description: 'Target URL of the Matter bridge for webhook events.',
-                        placeholder: 'http://localhost:8316',
+                        placeholder: 'http://localhost:8317',
                         sendEmpty: true
                     },
                     {
@@ -2930,7 +3094,7 @@
                         type: 'text',
                         required: false,
                         description: 'Target URL of the HomeKit bridge for webhook events.',
-                        placeholder: 'http://localhost:8317',
+                        placeholder: 'http://localhost:8316',
                         sendEmpty: true
                     },
                     {
@@ -2980,13 +3144,13 @@
                 id: 'upgrade',
                 method: 'POST',
                 path: '/upgrade',
-                description: 'Upgrade the agent in place. Takes no parameters. On a Pi it runs install.sh --upgrade (re-downloads the latest release and reinstalls dependencies) then restarts the process; on a Pico it downloads the latest main.py (backing up the old one) then resets. Returns {"status": "upgrading"}.'
+                description: 'Upgrade the agent in place. Takes no parameters. On a Pi it runs install.sh --upgrade (re-downloads the latest release and reinstalls dependencies) then restarts the process; on a Pico it downloads the latest main.py (backing up the old one) then resets; on an ESP32 it downloads and verifies app.mpy, boot.py and main.py, then resets. Returns {"status": "upgrading"}.'
             },
             {
                 id: 'restart',
                 method: 'POST',
                 path: '/restart',
-                description: 'Restart the server process. Body is optional - pass {"reboot": true} to reboot the physical device instead. Reboot is only honored on a real Pi or Pico; on Mac/dev machines it falls back to a process restart.',
+                description: 'Restart the server process. Body is optional - pass {"reboot": true} to reboot the physical device instead. Reboot is honored on a Pi, Pico or ESP32; on Mac/dev machines it falls back to a process restart.',
                 bodyType: 'json',
                 bodyFields: [
                     {
@@ -3005,10 +3169,11 @@
                 id: 'get_logs',
                 method: 'GET',
                 path: '/logs',
-                description: 'Retrieve the last 50 log entries from the server.'
+                description: 'Read the most recent log lines from the agent (the last 50 on a Pi, 30 on a Pico or ESP32).'
             }
         ];
 
+        // Page state: the open endpoint, the last response, and the poll timers.
         let selectedEndpointId = 'read_gpio_all';
         let isHeadersOpen = false;
         let lastResponseData = null;
@@ -3048,6 +3213,7 @@
             }
         }
 
+        // Switches light/dark mode, remembers it, and redraws the status badges in the new colors.
         function toggleTheme() {
             document.body.classList.toggle('dark-mode');
             const isDark = document.body.classList.contains('dark-mode');
@@ -3067,6 +3233,8 @@
         // Dynamically fetch current config state to populate forms
         let _cachedPiConfig = null;
 
+        // Reads the selected agent's /config/read into _cachedPiConfig and shows its board model
+        // in the header. Other views (Webhooks, form prefill) read from this cache.
         async function fetchPiConfig() {
             try {
                 const url = getApiUrl();
@@ -3085,6 +3253,8 @@
             }
         }
 
+        // Prefills the Config Update form from the cached config, flattening its groups into
+        // the root field names the form uses.
         async function fetchAndPopulateConfigFields(prefix) {
             try {
                 const cfg = _cachedPiConfig;
@@ -3113,6 +3283,8 @@
             }
         }
 
+        // Shows the public ctrlpi.com test feed, only when the agent's webhook points at ctrlpi.com.
+        // The feed is shared by everyone using that test endpoint, not private to this agent.
         async function fetchWebhooks() {
             const webhookUrl = ((_cachedPiConfig || {}).notifications || {}).webhook || '';
             if (!webhookUrl.toLowerCase().includes('ctrlpi.com')) return;
@@ -3123,6 +3295,7 @@
                 const response = await fetch(`/api/proxy/url?url=${encodeURIComponent(dataUrl)}`);
                 if (!response.ok) throw new Error(response.statusText);
                 let data = await response.json();
+                // The proxy wraps a non-JSON answer as {text}; parse it when it holds JSON.
                 if (data.text) { try { data = JSON.parse(data.text); } catch (_) {} }
                 const events = Array.isArray(data) ? data : (data.entries || data.events || data.data || []);
                 document.getElementById('webhookCount').textContent = events.length;
@@ -3131,6 +3304,7 @@
                     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:48px;">No webhook events yet.</td></tr>';
                     return;
                 }
+                // Anyone can post to the test endpoint, so event content is escaped.
                 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                 // Oldest first so newest ends up at bottom
                 tbody.innerHTML = [...events].reverse().map(evt => {
@@ -3153,6 +3327,7 @@
             }
         }
 
+        // This network's first three octets (e.g. "192.168.1."), prefilled in the + dialog.
         let _localNetworkPrefix = '';
 
         // Every startup prefers localhost, then the first responding LAN agent.
@@ -3171,6 +3346,7 @@
             } catch (e) {
                 console.warn('Could not fetch server defaults:', e);
             }
+            // Apply the saved keys, then use a local agent when one answers /hello.
             await loadSavedServers();
             applySavedKeyForCurrentHost();
             updateApiKeyTooltip();
@@ -3188,6 +3364,7 @@
             await new Promise(resolve => { runNetworkScan(true, resolve).finally(resolve); });
         }
 
+        // Resets the API key panel label and tooltip for the current tab.
         function refreshKeyPanelContext(tabId) {
             const label = document.getElementById('apiKeyPanelLabel');
             const agentInput = document.getElementById('apiKeyInput');
@@ -3209,23 +3386,24 @@
 
             const targetPane = document.getElementById(tabId);
             if (targetPane) {
-                targetPane.style.display = (tabId === 'testerPane' || tabId === 'mcpPane') ? 'grid' : 'flex';
+                targetPane.style.display = tabId === 'testerPane' ? 'grid' : 'flex';
                 // Small buffer to allow layout to settle before fading opacity
                 setTimeout(() => {
                     targetPane.classList.add('active');
                 }, 10);
             }
 
-            // The webhook viewer always hits ctrlpi.com directly - the agent URL/port
-            // bar isn't relevant there.
+            // Reset the key panel, then start the polling of the tab being opened.
             refreshKeyPanelContext(tabId);
 
             if (tabId === 'logPane') { fetchLogs(); setupLogAutoRefresh(); }
             if (tabId === 'webhookPane') { fetchWebhooks(); setupWebhookAutoRefresh(); }
         }
 
-        const INFO_PANELS = ['pinoutPanel', 'welcomePanel', 'apiCurlPanel'];
+        // Get Started panels that take the workbench's place when opened.
+        const INFO_PANELS = ['welcomePanel', 'apiCurlPanel'];
 
+        // Hides the Welcome and cURL panels and shows the API workbench again.
         function _hideAllRefPanels() {
             INFO_PANELS.forEach(id => {
                 const el = document.getElementById(id);
@@ -3236,17 +3414,7 @@
             document.querySelectorAll('.pinout-link').forEach(el => el.classList.remove('active'));
         }
 
-        function showPinout(src, label) {
-            _hideAllRefPanels();
-            document.querySelector('#testerPane .workbench-header').style.display = 'none';
-            document.querySelector('#testerPane .workbench-body').style.display = 'none';
-            document.getElementById('pinoutLabel').textContent = label;
-            document.getElementById('pinoutFrame').src = src;
-            document.getElementById('pinoutPanel').style.display = 'flex';
-            document.querySelectorAll('.endpoint-item').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.pinout-link').forEach(el => el.classList.toggle('active', el.dataset.src === src));
-        }
-
+        // Shows one Get Started panel in place of the workbench.
         function showInfoPanel(panelId) {
             _hideAllRefPanels();
             document.querySelector('#testerPane .workbench-header').style.display = 'none';
@@ -3258,10 +3426,12 @@
             if (panelId === 'apiCurlPanel') _populateCurlExamples();
         }
 
-        function closePinout() {
+        // Close button of the Get Started panels.
+        function closeInfoPanel() {
             _hideAllRefPanels();
         }
 
+        // Fills the nine cURL examples with the selected agent's URL and key.
         function _populateCurlExamples() {
             const url = getApiUrl();
             const key = document.getElementById('apiKeyInput').value || '<API_KEY>';
@@ -3291,7 +3461,7 @@
             const list = document.getElementById('endpointList');
             list.innerHTML = '';
 
-            // Groupings categories (rendered top-to-bottom: Config, GPIO, Sensors)
+            // Three groups, top to bottom: Configuration, GPIO Operations, Sensors.
             const gpios = endpoints.filter(e => e.path.startsWith('/gpio'));
             // Sensors: reads first, /sensor/config last (stable sort keeps read-all before read-one)
             const sensors = endpoints.filter(e => e.path.startsWith('/sensor'))
@@ -3326,23 +3496,21 @@
             appendGetStartedSection(list);
         }
 
-        // The Get Started panels (Welcome / MCP Setup / API cURL / Pinouts) live in the API
-        // workbench (#testerPane), so ensure that tab is active before showing one - this lets
-        // the same section work from the MCP tab's sidebar too.
+        // Activates the API workbench before displaying an info panel or pinout reference.
         function _showGetStartedPanel(fn) {
             const testerPane = document.getElementById('testerPane');
             if (testerPane && !testerPane.classList.contains('active')) switchTab('testerPane');
             fn();
         }
 
-        // Renders the shared "Get Started" section (info panels + pinouts) into a sidebar list.
-        // Used by both the API sidebar (renderEndpointsSidebar) and the MCP sidebar.
+        // Renders the "Get Started" section (info panels and pinouts) into the sidebar list.
         function appendGetStartedSection(list) {
             const refHead = document.createElement('div');
             refHead.className = 'endpoint-category-title';
             refHead.innerText = 'Get Started';
             list.appendChild(refHead);
 
+            // A small colored square holding an icon, used in the Get Started list.
             function _refIcon(bg, svgInner) {
                 return `<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;background:${bg};flex-shrink:0;">${svgInner}</span>`;
             }
@@ -3366,24 +3534,13 @@
                 list.appendChild(div);
             });
 
-            const pinouts = [
-                {
-                    label: 'Raspberry Pi Pinout', src: '/pages/Raspberry%20Pi%20Pinout.html',
-                    icon: _refIcon('#dc2626', '<svg width="11" height="11" viewBox="0 0 24 24" fill="white"><path d="M15 9H9v6h6V9zm-2 4h-2v-2h2v2zm8-2V9h-2V7c0-1.1-.9-2-2-2h-2V3h-2v2h-2V3H9v2H7c-1.1 0-2 .9-2 2v2H3v2h2v2H3v2h2v2c0 1.1.9 2 2 2h2v2h2v-2h2v2h2v-2h2c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2zm-4 6H7V7h10v10z"/></svg>')
-                },
-                {
-                    label: 'Pico Pinout', src: '/pages/Pico%20Pinout.html',
-                    icon: _refIcon('#10b981', '<svg width="11" height="11" viewBox="0 0 24 24" fill="white"><path d="M7 3H5c-1.1 0-2 .9-2 2v2h2V5h2V3zm10 0h-2v2h2v2h2V5c0-1.1-.9-2-2-2zM5 19H3v-2H1v2c0 1.1.9 2 2 2h2v-2zm14 2h2c1.1 0 2-.9 2-2v-2h-2v2h-2v2zM1 7v10h2V7H1zm20 0v10h2V7h-2zM5 5v14h14V5H5zm12 12H7V7h10v10zM9 9h6v6H9V9z"/></svg>')
-                },
-            ];
-            pinouts.forEach(({ label, src, icon }) => {
-                const div = document.createElement('div');
-                div.className = 'pinout-link';
-                div.dataset.src = src;
-                div.onclick = () => _showGetStartedPanel(() => showPinout(src, label));
-                div.innerHTML = `${icon}${label}`;
-                list.appendChild(div);
-            });
+            const pinoutLink = document.createElement('a');
+            pinoutLink.className = 'pinout-link';
+            pinoutLink.href = 'https://ctrlpi.com/pinout/pi';
+            pinoutLink.target = '_blank';
+            pinoutLink.rel = 'noopener noreferrer';
+            pinoutLink.innerHTML = `${_refIcon('#dc2626', '<svg width="11" height="11" viewBox="0 0 24 24" fill="white"><path d="M15 9H9v6h6V9zm-2 4h-2v-2h2v2zm8-2V9h-2V7c0-1.1-.9-2-2-2h-2V3h-2v2h-2V3H9v2H7c-1.1 0-2 .9-2 2v2H3v2h2v2H3v2h2v2c0 1.1.9 2 2 2h2v2h2v-2h2v2h2v-2h2c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2zm-4 6H7V7h10v10z"/></svg>')}Pinouts<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto;opacity:0.6;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
+            list.appendChild(pinoutLink);
         }
 
         // Search endpoints in list
@@ -3407,7 +3564,7 @@
         // Endpoint Selection & details populating
         // autoRun: if true (default), auto-execute GET endpoints with no params
         function selectEndpoint(id, autoRun = true) {
-            closePinout();
+            closeInfoPanel();
             selectedEndpointId = id;
             document.querySelectorAll('.endpoint-item').forEach(item => item.classList.remove('active'));
             const selectedItem = document.getElementById(`sidebar-item-${id}`);
@@ -3443,6 +3600,7 @@
                 sendApiRequest();
             }
 
+            // Endpoint-specific setup: field visibility, prefills and quick-pick buttons.
             if (ep.id === 'config_gpio') {
                 onGpioTypeChange('output');
                 const pinInput = document.getElementById('param-path-gpio');
@@ -3474,10 +3632,12 @@
             }
         }
 
+        // Quick-pick label for a pin: "name (gpio)" when it has a name.
         function pinButtonLabel(gpio, info) {
             return info.name ? `${info.name} (${gpio})` : gpio;
         }
 
+        // Quick-pick buttons for GPIO Write: the output pins the agent has configured.
         async function updateWriteGpioQuickOptions() {
             try {
                 const url = getApiUrl();
@@ -3514,6 +3674,7 @@
                 const data = await resp.json();
                 const pins = data.gpios || {};
                 let gpioNum = target;
+                // The target may be a pin number or a pin name.
                 let entry = pins[target];
                 if (!entry) {
                     const found = Object.entries(pins).find(([, info]) => info.name === target);
@@ -3527,6 +3688,7 @@
             }
         }
 
+        // Quick-pick buttons for GPIO Read: every pin the agent has configured.
         async function updateReadGpioQuickOptions() {
             try {
                 const url = getApiUrl();
@@ -3547,6 +3709,7 @@
             }
         }
 
+        // Quick-pick buttons for GPIO Config, from the pins /gpio/read reports.
         async function updateConfigGpioQuickOptions() {
             try {
                 const url = getApiUrl();
@@ -3590,8 +3753,8 @@
             }
         }
 
-        // Pick an existing sensor into the config form: set the name and prefill the
-        // file/script body from its current config (like fetchAndPopulateGpioConfig for pins).
+        // Picks an existing sensor into the config form: sets the name and prefills its
+        // script from the current config (like fetchAndPopulateGpioConfig for pins).
         async function pickSensorConfig(name) {
             setInputValue('name', name);
             try {
@@ -3601,9 +3764,7 @@
                 if (!resp.ok) return;
                 const data = await resp.json();
                 const s = (data.sensors || {})[name] || {};
-                const fileEl = document.getElementById('param-body-file');
                 const scriptEl = document.getElementById('param-body-script');
-                if (fileEl) fileEl.value = s.file || '';
                 if (scriptEl) scriptEl.value = s.script || '';
                 updateLiveUrlPreview();
             } catch (e) {
@@ -3611,13 +3772,15 @@
             }
         }
 
+        // Checks a GPIO path value and disables Send while it is invalid. Any pin number
+        // passes, since each agent knows its own board; names pass only where the route takes one.
         function validateGpioParam(value, inputEl, noteEl, btnEl, namesAllowed) {
             const trimmed = (value || '').trim();
             const n = parseInt(trimmed, 10);
             const isNumeric = trimmed !== '' && String(n) === trimmed;
             let valid;
             if (!trimmed)          valid = true;
-            else if (isNumeric)    valid = n >= 2 && n <= 27;
+            else if (isNumeric)    valid = n >= 0; // the agent checks the pin against its own board
             else                   valid = !!namesAllowed;
             const showError = !!trimmed && !valid;
             if (inputEl) inputEl.classList.toggle('invalid', showError);
@@ -3625,6 +3788,7 @@
             if (btnEl)   btnEl.disabled = showError || !document.getElementById('apiHostInput').value.trim();
         }
 
+        // GPIO Config takes a pin number only.
         function validateConfigGpio(value) {
             validateGpioParam(value,
                 document.getElementById('param-path-gpio'),
@@ -3633,6 +3797,7 @@
                 false);
         }
 
+        // GPIO Read and Write take a pin number or a pin name.
         function validateReadWriteGpio(value) {
             validateGpioParam(value,
                 document.getElementById('param-path-name_or_gpio'),
@@ -3677,7 +3842,7 @@
                         <div class="param-input-wrapper">
                             <input type="text" id="param-path-${param.name}" class="param-input" placeholder="${param.placeholder || ''}" value="${param.default !== undefined ? param.default : (param.quickOptions && param.quickOptions[0] !== undefined ? param.quickOptions[0] : '')}" oninput="updateLiveUrlPreview();${ep.id === 'config_gpio' && param.name === 'gpio' ? 'fetchAndPopulateGpioConfig(this.value); validateConfigGpio(this.value);' : (ep.id === 'read_gpio' || ep.id === 'write_gpio') && param.name === 'name_or_gpio' ? 'validateReadWriteGpio(this.value);' : ''}">
                         </div>
-                        ${(ep.id === 'config_gpio' && param.name === 'gpio') || ((ep.id === 'read_gpio' || ep.id === 'write_gpio') && param.name === 'name_or_gpio') ? '<p class="gpio-range-note" id="gpio-range-note">Interesting choice. Unfortunately, reality caps out at 2–27.</p>' : ''}
+                        ${(ep.id === 'config_gpio' && param.name === 'gpio') || ((ep.id === 'read_gpio' || ep.id === 'write_gpio') && param.name === 'name_or_gpio') ? '<p class="gpio-range-note" id="gpio-range-note">Enter a GPIO number.</p>' : ''}
                         ${quickHtml}
                     `;
                     form.appendChild(group);
@@ -3740,7 +3905,7 @@
                                 <p class="param-desc" style="margin-top: 2px;">${field.description}</p>
                             </div>
                             <label class="toggle-switch">
-                                <input type="checkbox" id="param-body-${field.name}" ${field.default === true ? 'checked' : ''}>
+                                <input type="checkbox" id="param-body-${field.name}" ${field.default === true ? 'checked' : ''}${field.onchange ? ` onchange="${field.onchange}"` : ''}>
                                 <span class="slider"></span>
                             </label>
                         `;
@@ -3883,6 +4048,7 @@
             }
         }
 
+        // Checks the raw JSON body and says whether it parses.
         function verifyRawJson() {
             const textarea = document.getElementById('bodyFieldsRawSection');
             const result = document.getElementById('verifyJsonResult');
@@ -3897,6 +4063,8 @@
             }
         }
 
+        // Loads the agent's current config into the raw JSON body, ready to edit and send to
+        // /config/load.
         async function populateCurrentConfig() {
             const textarea = document.getElementById('bodyFieldsRawSection');
             const result = document.getElementById('verifyJsonResult');
@@ -3915,12 +4083,14 @@
             }
         }
 
+        // Shows only the GPIO Config fields that apply to the chosen pin type.
         function onGpioTypeChange(value) {
             const isSignal = value === 'output' || value === 'input';
             const isClear = value === 'remove';
             const nameGroup = document.getElementById('param-body-group-name');
             if (nameGroup) nameGroup.style.display = isClear ? 'none' : '';
-            document.getElementById('param-body-group-pullup').style.display = value === 'input' ? '' : 'none';
+            const pullupGroup = document.getElementById('param-body-group-pullup');
+            if (pullupGroup) pullupGroup.style.display = value === 'input' ? '' : 'none';
             const initGroup = document.getElementById('param-body-group-init');
             if (initGroup) initGroup.style.display = isSignal ? '' : 'none';
             const maxGroup = document.getElementById('param-body-group-max');
@@ -3929,9 +4099,25 @@
             if (revGroup) revGroup.style.display = isSignal ? '' : 'none';
             const watchedGroup = document.getElementById('param-body-group-watched');
             if (watchedGroup) watchedGroup.style.display = isSignal ? '' : 'none';
+            const removeEl = document.getElementById('param-body-remove');
+            if (removeEl) removeEl.checked = isClear;
         }
 
+        // Keeps the Remove checkbox and the "remove" type in step.
+        function onGpioRemoveChange(checked) {
+            const typeEl = document.getElementById('param-body-type');
+            if (checked) {
+                if (typeEl) typeEl.value = 'remove';
+                onGpioTypeChange('remove');
+            } else {
+                if (typeEl && typeEl.value === 'remove') typeEl.value = 'output';
+                onGpioTypeChange(typeEl ? typeEl.value : 'output');
+            }
+        }
+
+        // Waits for typing to pause before reading the pin's config.
         let _gpioConfigDebounce = null;
+        // Prefills the GPIO Config form from the pin's current settings, debounced while typing.
         async function fetchAndPopulateGpioConfig(nameOrGpio) {
             if (!nameOrGpio || !nameOrGpio.trim()) return;
             clearTimeout(_gpioConfigDebounce);
@@ -3961,6 +4147,7 @@
                     // Boolean fields
                     if (el('reversed')) el('reversed').checked = !!pin.reversed;
                     if (el('watched')) el('watched').checked = !!pin.watched;
+                    if (el('remove')) el('remove').checked = false;
                     onGpioTypeChange(pin.type || 'output');
                 } catch (_) {}
             }, 400);
@@ -3997,6 +4184,10 @@
                                 }
                             }
                         });
+                        if (ep.id === 'config_gpio') {
+                            const typeVal = currentRaw.type || (currentRaw.remove ? 'remove' : 'output');
+                            onGpioTypeChange(typeVal);
+                        }
                     }
                 } catch (e) { }
             } else {
@@ -4036,16 +4227,22 @@
                     val = input.value === '' ? null : Number(input.value);
                 } else {
                     val = input.value;
-                    // Auto-convert string digits or null/flips into appropriate types if desired
+                    // value and init take 1/0 as numbers; the MicroPython agents refuse "1"/"0" as text.
                     if (val === 'null') val = null;
-                    else if (val === '1' && field.name === 'value') val = 1;
-                    else if (val === '0' && field.name === 'value') val = 0;
+                    else if ((val === '1' || val === '0') && (field.name === 'value' || field.name === 'init')) val = Number(val);
                 }
 
                 if (val !== null && (val !== '' || field.sendEmpty)) {
                     payload[field.name] = val;
                 }
             });
+
+            if (ep.id === 'config_gpio') {
+                if (payload.remove === true || payload.type === 'remove') {
+                    payload.type = 'remove';
+                    payload.remove = true;
+                }
+            }
             return payload;
         }
 
@@ -4164,7 +4361,7 @@
                 displayResponse(0, "Network Error / Offline", latency, {
                     error: "Failed to connect to API server.",
                     details: err.message,
-                    suggestion: `Ensure your API server is running, and api is enabled, if not start it using python main.py --enable-api in your shell.`
+                    suggestion: `Check that the agent is running and reachable at this address and port.`
                 }, null);
             } finally {
                 btn.disabled = false;
@@ -4214,6 +4411,7 @@
             if (typeof json !== 'string') {
                 json = JSON.stringify(json, undefined, 4);
             }
+            // Escape first, then wrap keys, strings, numbers, booleans and null in colored spans.
             json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g, function (match) {
                 let cls = 'json-number';
@@ -4271,9 +4469,6 @@
                 } else if (response.status === 403) {
                     isApiKeyValid = false;
                     return 403;
-                } else if (response.status === 503) {
-                    isApiKeyValid = 'disabled';
-                    return 503;
                 }
                 isApiKeyValid = false;
                 return response.status;
@@ -4320,21 +4515,26 @@
                         await verifyApiKeyDirectly(url, key);
                     }
 
+                    // Mark it online in the picker, then color the status dot by the key check.
+                    _onlineAgents.add(url.replace(/\/+$/, ''));
+                    renderServersDropdown(_savedServersCache);
+
                     if (isApiKeyValid === true) {
                         indicator.className = 'logo-indicator status-online';
                         indicator.title = 'API Status: Online';
-                    } else if (isApiKeyValid === 'disabled') {
-                        indicator.className = 'logo-indicator status-offline';
-                        indicator.title = 'API Status: REST API Disabled';
                     } else {
                         indicator.className = 'logo-indicator status-invalid-key';
                         indicator.title = 'API Status: Invalid API Key';
                     }
                 } else {
+                    _onlineAgents.delete(url.replace(/\/+$/, ''));
+                    renderServersDropdown(_savedServersCache);
                     indicator.className = 'logo-indicator status-offline';
                     indicator.title = 'API Status: Server Error';
                 }
             } catch (e) {
+                _onlineAgents.delete(url.replace(/\/+$/, ''));
+                renderServersDropdown(_savedServersCache);
                 indicator.className = 'logo-indicator status-offline';
                 indicator.title = 'API Status: Connection Offline';
             }
@@ -4353,6 +4553,7 @@
             label.title = label.textContent;
         }
 
+        // Send is enabled only once an agent address is set.
         function updateSendButtonState() {
             updateAgentAddress();
             const btn = document.getElementById('sendRequestBtn');
@@ -4360,14 +4561,17 @@
             btn.disabled = !document.getElementById('apiHostInput').value.trim();
         }
 
+        // The selected agent as a base URL, e.g. http://192.168.1.50:8314.
         function getApiUrl() {
             const host = (document.getElementById('apiHostInput').value || 'http://localhost').replace(/\/$/, '').trim();
             const port = document.getElementById('apiPortInput').value.trim();
             return port ? `${host}:${port}` : host;
         }
 
+        // Coalesces quick address changes into one save.
         let _saveConfigTimer = null;
 
+        // Saves the selected agent to lab-config.json.
         async function saveConnectionConfig() {
             const host = document.getElementById('apiHostInput').value.trim();
             const port = document.getElementById('apiPortInput').value.trim();
@@ -4394,6 +4598,8 @@
         // When base address or key changes in top bar
         let _connectionRevision = 0;
 
+        // Runs whenever the selected agent changes: drops cached state, applies its saved key,
+        // re-checks the connection and saves the selection.
         function onApiConfigChange() {
             _connectionRevision++;
             isApiKeyValid = null;
@@ -4403,6 +4609,7 @@
             updateLiveUrlPreview();
             updateSendButtonState();
             checkApiStatus();
+            // Save the selection once changes pause, and remember it in this browser.
             clearTimeout(_saveConfigTimer);
             _saveConfigTimer = setTimeout(saveConnectionConfig, 600);
             const fullUrl = getApiUrl();
@@ -4429,6 +4636,7 @@
                 if (!response.ok) throw new Error("API call error");
 
                 let logs = (await response.json()).logs || [];
+                // Hide this viewer's own polling, then apply the search.
                 logs = logs.filter(l => !l.includes('GET /logs'));
                 if (q) logs = logs.filter(l => l.toLowerCase().includes(q.toLowerCase()));
                 renderLogLines(logs);
@@ -4463,6 +4671,7 @@
                 let formatted = line;
 
                 // Color Code brackets
+                // Color the [API], [GPIO] and [webhook] tags.
                 if (line.includes('[API]')) {
                     formatted = line.replace('[API]', '<span class="log-tag-api">[API]</span>');
                 } else if (line.includes('[GPIO]')) {
@@ -4499,13 +4708,11 @@
 
         // Clear Server log file
         async function clearLogsOnServer() {
-            const confirmReset = confirm("Are you sure you want to completely erase the server-side agent.log file?");
+            const confirmReset = confirm("Erase the agent's log?");
             if (!confirmReset) return;
 
-            // The Pi has no dedicated clear endpoint - drive it the same way log_days=0
-            // does: read the current value, zero it (truncates immediately), then restore
-            // it. Done client-side via piApiFetch against the currently selected Pi
-            // (getApiUrl()/apiKeyInput), not whatever Pi the monitor defaults to.
+            // The agents have no clear endpoint, so this reads log_days, sets it to 0 (which
+            // clears the log at once), then restores it, on the selected agent.
             const url = getApiUrl();
             const apiKey = document.getElementById('apiKeyInput').value.trim();
             const headers = { 'Content-Type': 'application/json', 'Api-Key': apiKey };
@@ -4542,6 +4749,7 @@
             fetchLogs();
         }
 
+        // Refresh button of the Webhooks tab.
         function triggerManualWebhookRefresh() {
             const icon = document.getElementById('webhookRefreshBtnIcon');
             icon.classList.add('rotate-anim');
@@ -4549,6 +4757,7 @@
             fetchWebhooks();
         }
 
+        // Restarts the webhook poll at the chosen rate, or stops it for Manual.
         function setupWebhookAutoRefresh() {
             if (webhookPollIntervalId) { clearInterval(webhookPollIntervalId); webhookPollIntervalId = null; }
             const rate = document.getElementById('webhookPollSelect').value;
@@ -4600,9 +4809,13 @@
         // Cache of {url, api_key} records from /api/servers - lets the dropdown and
         // host-change handlers look up a Pi's own saved key without refetching.
         let _savedServersCache = [];
+        // Agent picker state: who answered, each board's model, and a guard against
+        // overlapping model fetches.
+        let _onlineAgents = new Set();
         const _agentModels = new Map();
         let _loadingAgentModels = false;
 
+        // Fetches the board model of each saved agent for the agent picker, four at a time.
         async function loadAgentModels() {
             if (_loadingAgentModels) return;
             _loadingAgentModels = true;
@@ -4616,14 +4829,25 @@
                                 headers: { 'Api-Key': server.api_key || '' },
                                 signal: AbortSignal.timeout(2500)
                             });
-                            if (!response.ok) return;
+                            // Any answer, even a refused key, shows the agent is up.
+                            if (response.ok || response.status === 401 || response.status === 403) {
+                                _onlineAgents.add(server.url.replace(/\/+$/, ''));
+                            }
+                            if (!response.ok) {
+                                renderServersDropdown(_savedServersCache);
+                                return;
+                            }
                             const config = await response.json();
+                            // The board model comes from the live agent block.
                             const model = config.agent?.platform;
                             if (typeof model === 'string' && model.trim()) {
                                 _agentModels.set(server.url, model.trim());
-                                renderServersDropdown(_savedServersCache);
                             }
-                        } catch { /* Offline or unauthorized: keep the agent selectable. */ }
+                            renderServersDropdown(_savedServersCache);
+                        } catch {
+                            _onlineAgents.delete(server.url.replace(/\/+$/, ''));
+                            renderServersDropdown(_savedServersCache);
+                        }
                     }));
                 }
             } finally {
@@ -4631,6 +4855,47 @@
             }
         }
 
+        // Deletes a saved agent after confirmation, via DELETE /api/servers.
+        async function deleteSavedAgent(event, url) {
+            if (event) {
+                event.stopPropagation();
+                if (event.preventDefault) event.preventDefault();
+            }
+            const server = (_savedServersCache || []).find(s => s.url === url);
+            const displayName = server?.name || url.replace(/^https?:\/\//, '');
+            if (typeof confirm === 'function' && !confirm(`Remove "${displayName}" from saved agents?`)) return;
+
+            try {
+                const res = await fetch(`/api/servers?url=${encodeURIComponent(url)}`, {
+                    method: 'DELETE'
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                _savedServersCache = data.servers || [];
+                if (Array.isArray(data.online_agents)) {
+                    _onlineAgents = new Set(data.online_agents.map(u => u.replace(/\/+$/, '')));
+                }
+                _agentModels.delete(url);
+
+                // Deleting the selected agent moves the selection to the first one left.
+                const currentUrl = getApiUrl().replace(/\/+$/, '');
+                if (currentUrl === url.replace(/\/+$/, '')) {
+                    if (_savedServersCache.length > 0) {
+                        selectScannedHost(_savedServersCache[0].url);
+                    } else {
+                        document.getElementById('apiHostInput').value = '';
+                        onApiConfigChange();
+                    }
+                }
+                renderServersDropdown(_savedServersCache);
+            } catch (err) {
+                console.error('Failed to delete agent:', err);
+                if (typeof alert === 'function') alert(`Could not remove agent: ${err.message}`);
+            }
+        }
+
+        // Draws the agent picker sorted by name: model and address (green when the last scan
+        // reached it), and a delete button on agents that were not reached.
         function renderServersDropdown(servers) {
             const panel = document.getElementById('savedServersPanel');
             if (!panel) return;
@@ -4640,13 +4905,18 @@
             panel.innerHTML = '';
             if (!sorted.length) panel.innerHTML = '<div class="servers-dd-empty">No saved agents. Use + to add one.</div>';
             sorted.forEach(server => {
-                const item = document.createElement('button');
-                item.type = 'button';
+                const item = document.createElement('div');
                 item.className = 'servers-dd-item';
                 const m = _agentModels.get(server.url);
                 const modelText = m ? ` <span style="font-family:'Inter',sans-serif;font-size:0.95rem;font-weight:500;color:var(--text-muted);position:relative;top:1px">- ${m}</span>` : '';
-                item.innerHTML = `<span style="font-family:'Inter',sans-serif;font-size:1rem;font-weight:700">${server.name || 'Unnamed agent'}</span>${modelText} <span style="font-family:'Inter',sans-serif;font-size:0.95rem;font-weight:500;color:#9ca3af;position:relative;top:1px">${server.url.replace(/^https?:\/\//, '')}</span>`;
-                item.onclick = () => pickSavedServer(server.url);
+                const isOnline = _onlineAgents && _onlineAgents.has(server.url.replace(/\/+$/, ''));
+                const addrColor = isOnline ? 'var(--success)' : '#9ca3af';
+                const deleteBtnHtml = !isOnline ? `<button type="button" class="servers-dd-delete-btn" title="Remove offline agent from list" aria-label="Remove agent" onclick="deleteSavedAgent(event, '${server.url}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>` : '';
+                item.innerHTML = `<span class="servers-dd-item-content"><span style="font-family:'Inter',sans-serif;font-size:1rem;font-weight:700">${server.name || 'Unnamed agent'}</span>${modelText} <span style="font-family:'Inter',sans-serif;font-size:0.95rem;font-weight:500;color:${addrColor};position:relative;top:1px">${server.url.replace(/^https?:\/\//, '')}</span></span>${deleteBtnHtml}`;
+                item.onclick = (e) => {
+                    if (e && e.target && e.target.closest && e.target.closest('.servers-dd-delete-btn')) return;
+                    pickSavedServer(server.url);
+                };
                 panel.appendChild(item);
             });
         }
@@ -4655,11 +4925,15 @@
         // touching the underlying persisted set; omit it to load everything saved.
         async function loadSavedServers(servers) {
             try {
+                // Without a list given, fetch it together with the scan history.
                 if (!servers) {
                     const res = await fetch('/api/servers');
                     if (!res.ok) return;
                     const data = await res.json();
                     servers = data.servers || [];
+                    if (Array.isArray(data.online_agents)) {
+                        _onlineAgents = new Set(data.online_agents.map(u => u.replace(/\/+$/, '')));
+                    }
                     _savedServersCache = servers;
                 } else {
                     _savedServersCache = servers;
@@ -4670,6 +4944,7 @@
             }
         }
 
+        // Opens or closes the agent picker.
         function toggleServersDropdown(e) {
             e.stopPropagation();
             const panel = document.getElementById('savedServersPanel');
@@ -4679,18 +4954,22 @@
             document.getElementById('agentPickerBtn').setAttribute('aria-expanded', String(panel.classList.contains('open')));
         }
 
+        // Selects an agent from the picker.
         function pickSavedServer(url) {
             document.getElementById('savedServersPanel').classList.remove('open');
             document.getElementById('agentPickerBtn').setAttribute('aria-expanded', 'false');
             selectScannedHost(url);
         }
 
+        // The key before editing, restored on Cancel.
         let _apiKeyOriginalValue = null;
 
+        // The key field the API key panel edits.
         function _activeKeyInput() {
             return document.getElementById('apiKeyInput');
         }
 
+        // Opens or closes the saved-key editor.
         function toggleApiKeyPanel(e) {
             if (e) e.stopPropagation();
             const dialog = document.getElementById('apiKeyDialog');
@@ -4717,6 +4996,7 @@
             dialog.close();
         }
 
+        // Saves the edited key as this agent's stored key (it does not change the agent itself).
         function saveApiKey() {
             closeApiKeyPanel(false);
             const url = getApiUrl();
@@ -4734,12 +5014,13 @@
             onApiConfigChange();
         }
 
+        // Closes the key editor and restores the previous key.
         function cancelApiKeyEdit() {
             closeApiKeyPanel(true);
         }
 
-        // Sends a new API key to the Pi (authenticated with the CURRENT key), and only
-        // switches the monitor over to the new key once the Pi confirms the change.
+        // Sends a new API key to the agent (authenticated with the current key), and only
+        // switches the dashboard to the new key once the agent confirms the change.
         async function updateApiKeyDangerZone() {
             const input = document.getElementById('dangerZoneNewApiKey');
             const result = document.getElementById('dangerZoneResult');
@@ -4761,8 +5042,9 @@
             const currentKey = document.getElementById('apiKeyInput').value;
 
             btn.disabled = true;
-            setResult('Sending update to the Pi…');
+            setResult('Sending update to the agent…');
             try {
+                // Authenticated with the current key; the agent switches to the new one at once.
                 const response = await piApiFetch(`${url}/config/update`, {
                     method: 'POST',
                     headers: {
@@ -4774,16 +5056,16 @@
 
                 if (!response.ok) {
                     const text = await response.text().catch(() => '');
-                    setResult(`Pi rejected the update (HTTP ${response.status}). Key was NOT changed. ${text.slice(0, 200)}`, 'error');
+                    setResult(`The agent rejected the update (HTTP ${response.status}). Key was NOT changed. ${text.slice(0, 200)}`, 'error');
                     return;
                 }
 
-                // Pi accepted the new key - switch the monitor over to it.
+                // The agent accepted the new key: use it from now on.
                 document.getElementById('apiKeyInput').value = newKey;
                 input.value = '';
                 updateApiKeyTooltip();
                 onApiConfigChange();
-                setResult('✓ Key updated on the Pi. The monitor is now using the new key.', 'success');
+                setResult('✓ Key updated on the agent. The dashboard now uses the new key.', 'success');
             } catch (e) {
                 setResult(`Request failed - Key was NOT changed: ${e.message}`, 'error');
             } finally {
@@ -4798,6 +5080,7 @@
             if (input && btn) btn.title = `API Key: ${input.value || '(none set)'}`;
         }
 
+        // Escape, or a click anywhere else, closes the agent picker.
         document.addEventListener('keydown', event => {
             if (event.key === 'Escape') {
                 document.getElementById('savedServersPanel').classList.remove('open');
@@ -4811,6 +5094,7 @@
             document.getElementById('agentPickerBtn').setAttribute('aria-expanded', 'false');
         });
 
+        // Opens the + dialog, prefilled with this network prefix, port 8314 and the default key.
         function openAddAgentDialog() {
             const hostInput = document.getElementById('newAgentHost');
             hostInput.value = _localNetworkPrefix;
@@ -4822,11 +5106,13 @@
             hostInput.setSelectionRange(hostInput.value.length, hostInput.value.length);
         }
 
+        // Builds the URL from the + dialog's fields, with a clear error for each bad input.
         function newAgentUrl(host, port) {
             host = host.trim();
             if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.$/.test(host)) throw new Error('Enter the last number of the IP address.');
             if (!host || /[\s/?#@]/.test(host)) throw new Error('Enter an IP address or hostname without a URL path.');
             if (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) throw new Error('Enter a port from 1 to 65535.');
+            // An IPv6 address needs brackets in a URL.
             if (host.includes(':') && !host.startsWith('[')) host = `[${host}]`;
             try {
                 const parsed = new URL(`http://${host}:${port}`);
@@ -4834,6 +5120,8 @@
             } catch { throw new Error('Enter a valid IP address or hostname.'); }
         }
 
+        // Checks /hello and the key through the proxy, then saves and selects the agent.
+        // The dialog stays open with an error when any check fails.
         async function saveNewAgent() {
             const button = document.getElementById('addAgentSubmit');
             const cancel = document.getElementById('addAgentCancel');
@@ -4846,6 +5134,7 @@
                 button.disabled = cancel.disabled = true;
                 button.textContent = 'Saving…';
 
+                // 1. The agent must answer /hello.
                 try {
                     const health = await piApiFetch(`${url}/hello`, { signal: AbortSignal.timeout(2000) });
                     if (!health.ok) throw new Error('Unreachable');
@@ -4853,6 +5142,7 @@
                     throw new Error('Agent unreachable. Please check the address and port and try again.');
                 }
 
+                // 2. A key, when given, must be accepted by an authenticated route.
                 if (api_key) {
                     try {
                         const keyCheck = await piApiFetch(`${url}/config/read`, {
@@ -4867,6 +5157,7 @@
                     }
                 }
 
+                // 3. Save it to the shared agent list, then select it.
                 const response = await fetch('/api/servers', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url, api_key })
@@ -4887,15 +5178,18 @@
 
         /* ---------------- NETWORK SCAN SCRIPTS ---------------- */
 
+        // Opens the scan window and starts a sweep.
         function openScanModal() {
             document.getElementById('scanModal').classList.add('open');
             runNetworkScan();
         }
 
+        // Closes the scan window.
         function closeScanModal() {
             document.getElementById('scanModal').classList.remove('open');
         }
 
+        // Puts a URL's host and port into the connection fields.
         function setAgentConnection(url) {
             try {
                 const parsed = new URL(url);
@@ -4907,6 +5201,7 @@
             onApiConfigChange();
         }
 
+        // Selects an agent found by a scan.
         function selectScannedHost(url) {
             setAgentConnection(url);
             closeScanModal();
@@ -4922,6 +5217,8 @@
             }
         }
 
+        // Reads a /api/scan answer: plain JSON, or NDJSON where each "agent" event is passed
+        // to onAgent as it arrives and the "done" event is the result.
         async function readScanResponse(response, onAgent) {
             if (!response.headers?.get('content-type')?.includes('application/x-ndjson')) return response.json();
             const reader = response.body.getReader();
@@ -4951,6 +5248,7 @@
             } finally { reader.releaseLock(); }
         }
 
+        // Only one scan runs at a time.
         let _scanInProgress = false;
         // Startup selects the first response; later responses only update the choices.
         async function runNetworkScan(autoPickFirst = false, onFirst = () => {}) {
@@ -4958,8 +5256,20 @@
             _scanInProgress = true;
             const revision = _connectionRevision;
             let selectedFirst = false;
+            // Adds or updates each agent as the scan reports it; with autoPickFirst the first one
+            // is selected at once, unless the user changed the selection meanwhile.
             const acceptAgent = agent => {
-                if (!_savedServersCache.some(server => server.url === agent.url)) _savedServersCache.push(agent);
+                if (agent.name) {
+                    _savedServersCache = _savedServersCache.filter(server =>
+                        server.url === agent.url || server.name !== agent.name
+                    );
+                }
+                const existingIdx = _savedServersCache.findIndex(server => server.url === agent.url);
+                if (existingIdx !== -1) {
+                    _savedServersCache[existingIdx] = { ..._savedServersCache[existingIdx], ...agent };
+                } else {
+                    _savedServersCache.push(agent);
+                }
                 renderServersDropdown(_savedServersCache);
                 if (autoPickFirst && !selectedFirst) {
                     selectedFirst = true;
@@ -5019,7 +5329,7 @@
                 if (found.length === 0) {
                     resultsList.innerHTML = `<div class="scan-empty-state">No ctrlPi servers found on this network.</div>`;
                 } else if (autoPickFirst) {
-                    // Compatibility with a server that still returns a single JSON response.
+                    // Pick the first agent here when no streamed event already selected one.
                     if (!selectedFirst) acceptAgent(_savedServersCache.find(server => server.url === found[0]) || { url: found[0], name: names[found[0]], api_key: 'your-secret-key' });
                 } else if (found.length === 1) {
                     statusEl.textContent = `Found 1 server - auto-selecting...`;
@@ -5049,6 +5359,7 @@
     </script>
 
     <!-- Network Scan Modal -->
+    <!-- Network scan window: progress and the agents found -->
     <div id="scanModal" class="scan-modal-overlay" onclick="if(event.target===this)closeScanModal()">
         <div class="scan-modal">
             <div class="scan-modal-header">
