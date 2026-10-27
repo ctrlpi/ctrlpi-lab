@@ -129,6 +129,84 @@ for (const localStatus of [200, 503, 'timeout']) {
 }
 
 
+test('a saved agent without a key tries the default key, a saved key is kept', async () => {
+    const { context, get } = dashboard(async () => ({ ok: true, json: async () => ({}) }));
+    await context.loadSavedServers([
+        { url: 'http://localhost:8314', name: 'local', api_key: '' },
+        { url: 'http://192.168.1.20:8314', name: 'Zulu', api_key: 'z-key' },
+    ]);
+    get('apiPortInput').value = '8314';
+    get('apiHostInput').value = 'http://localhost';
+    get('apiKeyInput').value = '';
+    context.applySavedKeyForCurrentHost();
+    assert.equal(get('apiKeyInput').value, 'your-secret-key');
+    get('apiHostInput').value = 'http://192.168.1.20';
+    context.applySavedKeyForCurrentHost();
+    assert.equal(get('apiKeyInput').value, 'z-key');
+});
+
+// A dashboard on pi.local:8314 (saved with old-key) whose agent answers proxied calls with `status`.
+function keyChangeDashboard(status) {
+    const saved = [];
+    const dash = dashboard(async (url, options) => {
+        if (url.startsWith('/api/proxy/url?')) {
+            return { ok: status === 200, status, statusText: '', headers: new Headers({ 'content-type': 'application/json' }),
+                json: async () => ({}), text: async () => '' };
+        }
+        if (options?.method === 'POST') saved.push(JSON.parse(options.body));
+        return { ok: true, json: async () => ({ servers: [] }) };
+    });
+    const { context, get, evaluate } = dash;
+    evaluate('var performance = { now: () => 0 }');
+    evaluate('_savedServersCache = [{ url: "http://pi.local:8314", api_key: "old-key" }]');
+    get('apiHostInput').value = 'http://pi.local';
+    get('apiPortInput').value = '8314';
+    get('apiKeyInput').value = 'old-key';
+    context.onApiConfigChange = () => context.applySavedKeyForCurrentHost();
+    return { ...dash, saved, savedKey: () => evaluate('_savedServersCache[0].api_key') };
+}
+
+test('a Danger Zone key change is saved as the agent\'s key only when the agent accepts it', async () => {
+    const accepted = keyChangeDashboard(200);
+    accepted.get('dangerZoneNewApiKey').value = 'new-key';
+    await accepted.context.updateApiKeyDangerZone();
+    assert.equal(accepted.get('apiKeyInput').value, 'new-key');
+    assert.equal(accepted.savedKey(), 'new-key');
+    assert.deepEqual(accepted.saved, [{ url: 'http://pi.local:8314', api_key: 'new-key' }]);
+
+    const rejected = keyChangeDashboard(403);
+    rejected.get('dangerZoneNewApiKey').value = 'new-key';
+    await rejected.context.updateApiKeyDangerZone();
+    assert.equal(rejected.get('apiKeyInput').value, 'old-key');
+    assert.equal(rejected.savedKey(), 'old-key');
+    assert.deepEqual(rejected.saved, []);
+});
+
+test('an api_key sent in a config update or load body is saved once the agent accepts it', async () => {
+    const send = async (status, endpoint, body) => {
+        const dash = keyChangeDashboard(status);
+        dash.evaluate(`selectedEndpointId = "${endpoint}"`);
+        dash.get('btnTabRaw').classList.add('active');
+        dash.get('bodyFieldsRawSection').value = body;
+        dash.get('selectedPathText').innerText = 'http://pi.local:8314/config/update';
+        await dash.context.sendApiRequest();
+        return dash;
+    };
+    // Agents store a number sent for a key as text.
+    const loaded = await send(200, 'config_load', '{"api_key": 4242, "sensors": {}}');
+    assert.equal(loaded.get('apiKeyInput').value, '4242');
+    assert.deepEqual(loaded.saved, [{ url: 'http://pi.local:8314', api_key: '4242' }]);
+
+    const updated = await send(200, 'set_config', '{"api_key": "new-key"}');
+    assert.equal(updated.savedKey(), 'new-key');
+
+    for (const [status, endpoint, body] of [[403, 'set_config', '{"api_key": "new-key"}'], [200, 'set_config', '{"name": "pi"}'], [200, 'config_load', '{}']]) {
+        const kept = await send(status, endpoint, body);
+        assert.equal(kept.get('apiKeyInput').value, 'old-key');
+        assert.deepEqual(kept.saved, []);
+    }
+});
+
 test('manual agent validates host and port', () => {
     const { context } = dashboard();
     assert.equal(context.newAgentUrl('192.168.1.5', '8314'), 'http://192.168.1.5:8314');
@@ -308,10 +386,10 @@ test('log viewer searches case-insensitively and hides polling requests', async 
 
 test('webhook viewer renders proxied events and escapes event content', async () => {
     const { context, get, evaluate } = dashboard(async url => {
-        assert.equal(new URL(url, 'http://lab').searchParams.get('url'), 'https://ctrlpi.com/webhook/data');
+        assert.equal(new URL(url, 'http://lab').searchParams.get('url'), 'https://hooks.ctrlpi.com/webhook/data');
         return { ok: true, json: async () => ({ events: [{ ts: 'now', api_key: '<key>', body: { note: '<script>' } }] }) };
     });
-    evaluate('_cachedPiConfig = { notifications: { webhook: "https://ctrlpi.com/webhook/test" } }');
+    evaluate('_cachedPiConfig = { notifications: { webhook: "https://hooks.ctrlpi.com/webhook/test" } }');
     await context.fetchWebhooks();
     assert.equal(get('webhookCount').textContent, '1');
     assert.match(get('webhookTbody').innerHTML, /&lt;script&gt;/);
@@ -403,6 +481,88 @@ test('GPIO path accepts any pin number, so Pico and ESP32 pins can be sent', () 
     assert.equal(get('sendRequestBtn').disabled, true, 'GPIO config takes a number, not a name');
     context.validateReadWriteGpio('relay');
     assert.equal(get('sendRequestBtn').disabled, false, 'read and write accept a pin name');
+});
+
+test('script endpoints get their own sidebar group and are found by the search', () => {
+    const { context, get } = dashboard();
+    context.renderEndpointsSidebar();
+    assert.ok(get('endpointList').children.some(c => c.innerText === 'Scripts'));
+    get('endpointSearchInput').value = '/script';
+    context.filterEndpoints();
+    for (const id of ['list_scripts', 'read_script', 'write_script', 'run_script']) {
+        assert.equal(get(`sidebar-item-${id}`).style.display, 'flex', id);
+    }
+    assert.equal(get('sidebar-item-read_sensor').style.display, 'none');
+});
+
+test('script read and run responses can show only the content or output, other responses stay JSON', () => {
+    const { context, get, evaluate } = dashboard();
+    evaluate('selectedEndpointId = "run_script"');
+    context.displayResponse(200, 'OK', 5, { name: 'cpu-temp.sh', exit_code: 0, output: '47.8\n' }, null);
+    assert.equal(get('responseTextSwitch').style.display, '');
+    assert.equal(get('responseTextLabel').textContent, 'Output only');
+    assert.equal(get('jsonResponseView').textContent, '47.8\n');
+    assert.match(get('responseBodyLabel').innerHTML, /OUTPUT.*exit 0/);
+
+    get('responseTextToggle').checked = false;
+    context.toggleResponseText();
+    assert.match(get('jsonResponseView').innerHTML, /exit_code/);
+    assert.equal(get('responseBodyLabel').textContent, 'BODY RESPONSE (application/json)');
+
+    get('responseTextToggle').checked = true;
+    context.toggleResponseText();
+    evaluate('selectedEndpointId = "read_script"');
+    context.displayResponse(200, 'OK', 5, { name: 'cpu-temp.sh', content: 'echo 1\n' }, null);
+    assert.equal(get('responseTextLabel').textContent, 'Content only');
+    assert.equal(get('jsonResponseView').textContent, 'echo 1\n');
+    assert.equal(get('responseBodyLabel').innerHTML, 'CONTENT');
+
+    // An error answer has no text field, so the switch hides and the JSON shows.
+    context.displayResponse(404, 'Not Found', 5, { detail: 'script not found' }, null);
+    assert.equal(get('responseTextSwitch').style.display, 'none');
+    assert.match(get('jsonResponseView').innerHTML, /script not found/);
+});
+
+test('getFormBodyData sends run args as an array and write content even when empty', () => {
+    const { context, get } = dashboard();
+    // The payload is built inside the dashboard's own VM context, so compare plain copies.
+    const body = () => JSON.parse(JSON.stringify(context.getFormBodyData()));
+    context.selectEndpoint('run_script', false);
+    get('param-body-args').value = '  zone1   21 ';
+    assert.deepEqual(body(), { args: ['zone1', '21'] });
+    get('param-body-args').value = '';
+    assert.deepEqual(body(), {});
+
+    context.selectEndpoint('write_script', false);
+    get('param-body-content').value = 'def read():\n    return 42\n';
+    get('param-body-remove').checked = false;
+    assert.deepEqual(body(), { content: 'def read():\n    return 42\n', remove: false });
+    get('param-body-content').value = '';
+    assert.equal(context.getFormBodyData().content, '', 'an empty file (e.g. write.lock) can be written');
+});
+
+test('script quick picks list the agent\'s files, and a write pick loads the text for editing', async () => {
+    const calls = [];
+    const { context, get } = dashboard(async url => {
+        calls.push(decodeURIComponent(url));
+        if (url.includes(encodeURIComponent('/script/list'))) {
+            return { ok: true, json: async () => ({ scripts: [{ name: 'cpu-temp.sh' }, { name: '<img src=x>' }], write: 'enabled' }) };
+        }
+        return { ok: true, json: async () => ({ name: 'cpu-temp.sh', content: 'echo 47.8\n' }) };
+    });
+    get('apiHostInput').value = 'http://127.0.0.1';
+    get('apiPortInput').value = '8314';
+    await context.updateScriptQuickOptions('write_script');
+    const html = get('quick-options-write_script-name').innerHTML;
+    assert.match(html, /pickScriptWrite\('cpu-temp\.sh'\)/);
+    assert.doesNotMatch(html, /<img/, 'a name agents never list is not rendered');
+
+    get('param-body-remove').checked = true;
+    await context.pickScriptWrite('cpu-temp.sh');
+    assert.equal(get('param-path-name').value, 'cpu-temp.sh');
+    assert.equal(get('param-body-content').value, 'echo 47.8\n');
+    assert.equal(get('param-body-remove').checked, false);
+    assert.ok(calls.some(c => c.endsWith('http://127.0.0.1:8314/script/read/cpu-temp.sh')));
 });
 
 test('filterEndpoints searches endpoints by path and description', () => {

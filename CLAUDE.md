@@ -1,5 +1,9 @@
 # CLAUDE.md - ctrlpi-lab
 
+## The README is locked
+
+`README.md` is done. Do not edit it without the user's explicit confirmation, even for a small wording or formatting fix, and even to keep it in sync with another project's README.
+
 ## Project and scope
 
 ctrlpi-lab is a local dashboard for `pi-gpio-api`, `pico-gpio-api` and `esp32-gpio-api`. It serves a
@@ -99,6 +103,9 @@ at most 48 run concurrently. Preserve these limits for slower Pi/Pico boards.
 
 Discovery checks `/hello`. Existing saved keys are preserved. For a new agent without
 a key, the default key is checked against `/config/read` and saved only if accepted.
+`POST /api/servers` without `api_key` (the dashboard registering an agent it sees online)
+does the same when the saved key is empty, and `applySavedKeyForCurrentHost()` fills
+`your-secret-key` for a saved agent with no key.
 `stream=1` returns NDJSON `agent` events followed by `done`, letting the dashboard
 connect before the entire scan finishes.
 
@@ -142,9 +149,20 @@ and drive the LAN through the proxy. Keep both checks in front of every route.
 - **API:** endpoint definitions live in `pages/main.html`. Requests target the header’s
   selected agent through `piApiFetch`. Config Update has only one API-key change
   control, in the red Danger Zone; do not re-add an ordinary `api_key` body field.
+  Once the agent accepts a new key (the Danger Zone, or `api_key` in a Raw JSON
+  `/config/update` or `/config/load` body), `saveApiKey()` saves it as that agent's key.
   GPIO path fields accept any pin number, since each agent checks it against its own board
   (Pico GP0-28, ESP32 up to 48). `value` and `init` 1/0 are sent as numbers: the MicroPython
   agents and `lite.py` refuse them as text.
+- **Scripts (API tab):** `list_scripts`, `read_script`, `write_script`, `run_script` form their own
+  sidebar group after Sensors. `updateScriptQuickOptions()` fills the name picks from `/script/list`
+  (only names of `[A-Za-z0-9._-]`, since the picks go into `onclick`); under write, `pickScriptWrite()`
+  loads the file's text into `content`. Two field types exist for them: `textarea` (`content`,
+  `sendEmpty`, so an empty `write.lock` can be written) and `list` (`args`: space-separated in the
+  form, an array in the body and the Raw JSON view). On a 2xx read or run answer, the response card's
+  top-right switch (**Content only** / **Output only**, on by default, remembered in localStorage as
+  `ctrlpi-response-view`) shows just `content` or `output` as plain text, a run with an `exit N` tag;
+  Copy copies what is shown. `renderResponseBody()` draws both views.
 - **Logs:** reads the selected agent’s `/logs` via `piApiFetch`, filters search text
   in the browser, and hides polling entries.
   Keep compact line spacing and orange `[webhook]`/`[webhock]` tags. No category buttons.
@@ -193,6 +211,6 @@ forced termination is only a cleanup fallback. A passing local command does not
 confirm a GitHub-hosted CI run.
 
 Covered areas include discovery/selection, manual agent validation, HTTP proxy behavior,
-GPIO state changes, sensors, config/key changes, shared-config preservation, logs,
+GPIO state changes, sensors, scripts, config/key changes, shared-config preservation, logs,
 webhook rendering, and poll timers. Remaining gaps include a real browser/visual layout,
 hardware timing, LAN discovery over actual interfaces, and external webhook delivery. Test relevant behavior rather than merely matching implementation.

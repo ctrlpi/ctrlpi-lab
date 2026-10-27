@@ -1855,6 +1855,27 @@
             border: 1px solid rgba(239, 68, 68, 0.25);
         }
 
+        /* "Output only" / "Content only" switch at the response card's top right. */
+        .response-text-switch {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .response-text-switch label:first-child {
+            cursor: pointer;
+        }
+
+        .resp-exit-tag {
+            margin-left: 8px;
+        }
+
         /* Pretty JSON colorization classes */
         .json-viewer-container {
             flex-grow: 1;
@@ -2754,7 +2775,8 @@
     <script>
         // Every agent route the API tab offers, in sidebar order. Each entry drives the form:
         //   pathParams / queryParams  fields that fill {name} in the path or the query string
-        //   bodyFields                JSON body fields; type is text, number, select or boolean
+        //   bodyFields                JSON body fields; type is text, number, select, boolean,
+        //                             textarea (multi-line text) or list (space-separated, sent as an array)
         //     conditionalOn           shown and sent only while another field has one of these values
         //     sendEmpty               sent even when left empty (clears the value on the agent)
         //     quickOptions            pick buttons, filled from the agent's current pins or sensors
@@ -3006,6 +3028,95 @@
                         quickOptions: []
                     }
                 ]
+            },
+            // Scripts: the files in the agent's scripts/ folder (agents 0.9.28 or later).
+            {
+                id: 'list_scripts',
+                method: 'GET',
+                path: '/script/list',
+                description: 'List the files in the agent\'s scripts/ folder (name, size, modified), plus "write": enabled, default_key (writes are refused until the agent\'s API key is changed) or locked (a write.lock file blocks every write).'
+            },
+            {
+                id: 'read_script',
+                method: 'GET',
+                path: '/script/read/{name}',
+                description: 'Read one file from the agent\'s scripts/ folder.',
+                autoSend: true,
+                pathParams: [
+                    {
+                        name: 'name',
+                        type: 'text',
+                        required: true,
+                        description: 'Script file name',
+                        placeholder: 'e.g. cpu-temp.sh',
+                        quickOptions: []
+                    }
+                ]
+            },
+            {
+                id: 'write_script',
+                method: 'POST',
+                path: '/script/write/{name}',
+                description: 'Create or overwrite a file in the agent\'s scripts/ folder with "content", or enable "remove" to delete it. Pick an existing script to load its text for editing. Refused while the agent has the default API key, or once a write.lock file is there. Writing write.lock itself locks script writes, and this form can\'t remove it; a script run with /script/run can, as can a shell (Pi) or USB (Pico, ESP32).',
+                pathParams: [
+                    {
+                        name: 'name',
+                        type: 'text',
+                        required: true,
+                        description: 'A bare filename of up to 32 characters: letters, digits, . _ - (no paths).',
+                        placeholder: 'e.g. weather.py',
+                        quickOptions: []
+                    }
+                ],
+                bodyType: 'json',
+                bodyFields: [
+                    {
+                        name: 'content',
+                        type: 'textarea',
+                        required: false,
+                        sendEmpty: true,
+                        description: 'The file\'s full text.',
+                        placeholder: 'def read(*args):\n    return 42'
+                    },
+                    {
+                        name: 'remove',
+                        type: 'boolean',
+                        required: false,
+                        description: 'Delete this file.',
+                        default: false
+                    }
+                ],
+                defaultBody: {
+                    content: "",
+                    remove: false
+                }
+            },
+            {
+                id: 'run_script',
+                method: 'POST',
+                path: '/script/run/{name}',
+                description: 'Run a file from the agent\'s scripts/ folder and return exit_code and output. On a Raspberry Pi a .py runs with Python and anything else with sh (its stdout, 15 s limit); on a Pico or ESP32 the file runs in-process and output is what its read(*args) returns, or its result.',
+                pathParams: [
+                    {
+                        name: 'name',
+                        type: 'text',
+                        required: true,
+                        description: 'Script file name',
+                        placeholder: 'e.g. cpu-temp.sh',
+                        quickOptions: []
+                    }
+                ],
+                bodyType: 'json',
+                bodyFields: [
+                    {
+                        name: 'args',
+                        type: 'list',
+                        required: false,
+                        description: 'Arguments, separated by spaces (letters and digits only).',
+                        placeholder: 'e.g. zone1 21'
+                    }
+                ],
+                defaultBody: {}
             },
             // Agent: health check, configuration, upgrade, restart and logs.
             {
@@ -3288,7 +3399,7 @@
         async function fetchWebhooks() {
             const webhookUrl = ((_cachedPiConfig || {}).notifications || {}).webhook || '';
             if (!webhookUrl.toLowerCase().includes('ctrlpi.com')) return;
-            const dataUrl = 'https://ctrlpi.com/webhook/data';
+            const dataUrl = 'https://hooks.ctrlpi.com/webhook/data';
             const list = document.getElementById('webhookList');
             const empty = document.getElementById('webhookEmpty');
             try {
@@ -3461,12 +3572,13 @@
             const list = document.getElementById('endpointList');
             list.innerHTML = '';
 
-            // Three groups, top to bottom: Configuration, GPIO Operations, Sensors.
+            // Four groups, top to bottom: Configuration, GPIO Operations, Sensors, Scripts.
             const gpios = endpoints.filter(e => e.path.startsWith('/gpio'));
             // Sensors: reads first, /sensor/config last (stable sort keeps read-all before read-one)
             const sensors = endpoints.filter(e => e.path.startsWith('/sensor'))
                 .sort((a, b) => (a.path.startsWith('/sensor/config') ? 1 : 0) - (b.path.startsWith('/sensor/config') ? 1 : 0));
-            const config = endpoints.filter(e => !e.path.startsWith('/gpio') && !e.path.startsWith('/sensor'));
+            const scripts = endpoints.filter(e => e.path.startsWith('/script'));
+            const config = endpoints.filter(e => !e.path.startsWith('/gpio') && !e.path.startsWith('/sensor') && !e.path.startsWith('/script'));
 
             const addCategory = (title, items) => {
                 const head = document.createElement('div');
@@ -3492,6 +3604,7 @@
             addCategory("Configuration", config);
             addCategory("GPIO Operations", gpios);
             addCategory("Sensors", sensors);
+            addCategory("Scripts", scripts);
 
             appendGetStartedSection(list);
         }
@@ -3617,6 +3730,11 @@
             // Sensor endpoints: offer a picker of the currently-configured sensors
             if (ep.id === 'read_sensor' || ep.id === 'config_sensor') {
                 updateSensorQuickOptions(ep.id);
+            }
+
+            // Script endpoints: offer a picker of the files in scripts/
+            if (ep.id === 'read_script' || ep.id === 'write_script' || ep.id === 'run_script') {
+                updateScriptQuickOptions(ep.id);
             }
 
             if (ep.id === 'read_gpio') {
@@ -3769,6 +3887,52 @@
                 updateLiveUrlPreview();
             } catch (e) {
                 console.warn('Could not prefill sensor config', e);
+            }
+        }
+
+        // Populate the script-name picker (read/write/run) with the files in the agent's
+        // scripts/ folder. Under write, a pick loads the file's text for editing.
+        async function updateScriptQuickOptions(endpointId) {
+            try {
+                const url = getApiUrl();
+                const apiKey = document.getElementById('apiKeyInput').value;
+                const resp = await piApiFetch(`${url}/script/list`, { headers: { 'Api-Key': apiKey } });
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const container = document.getElementById(`quick-options-${endpointId}-name`);
+                if (!container) return;
+                // Agents only list names of these characters; anything else is skipped, not rendered.
+                container.innerHTML = (data.scripts || []).map(s => s.name)
+                    .filter(name => /^[A-Za-z0-9._-]+$/.test(name || ''))
+                    .map(name => {
+                        if (endpointId === 'write_script') {
+                            return `<button class="quick-btn" onclick="pickScriptWrite('${name}')">${name}</button>`;
+                        }
+                        if (endpointId === 'read_script') {
+                            return `<button class="quick-btn" onclick="setInputValue('name', '${name}'); sendApiRequest(); event.stopPropagation();">${name}</button>`;
+                        }
+                        return `<button class="quick-btn" onclick="setInputValue('name', '${name}')">${name}</button>`;
+                    }).join('');
+            } catch (e) {
+                console.warn('Could not load script quick options', e);
+            }
+        }
+
+        // Picks a script into the write form and loads its current text for editing.
+        async function pickScriptWrite(name) {
+            setInputValue('name', name);
+            try {
+                const url = getApiUrl();
+                const apiKey = document.getElementById('apiKeyInput').value;
+                const resp = await piApiFetch(`${url}/script/read/${encodeURIComponent(name)}`, { headers: { 'Api-Key': apiKey } });
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const contentEl = document.getElementById('param-body-content');
+                if (contentEl) contentEl.value = data.content || '';
+                const removeEl = document.getElementById('param-body-remove');
+                if (removeEl) removeEl.checked = false;
+            } catch (e) {
+                console.warn('Could not load the script', e);
             }
         }
 
@@ -3928,6 +4092,19 @@
                                 <select id="param-body-${field.name}" class="param-input param-select"${field.onchange ? ` onchange="${field.onchange}"` : ''}>
                                     ${optionsHtml}
                                 </select>
+                            </div>
+                        `;
+                    } else if (field.type === 'textarea') {
+                        // Multi-line text (a script's content), in the raw editor's monospace style
+                        group.className = 'parameter-group';
+                        group.innerHTML = `
+                            <div class="param-meta">
+                                <span class="param-label">${field.name}</span>
+                                <span class="param-type">JSON attribute (text)</span>
+                            </div>
+                            <p class="param-desc">${field.description}</p>
+                            <div class="param-input-wrapper">
+                                <textarea id="param-body-${field.name}" class="raw-json-editor" placeholder="${field.placeholder || ''}" spellcheck="false"></textarea>
                             </div>
                         `;
                     } else if (field.inline) {
@@ -4179,7 +4356,7 @@
                                     if (f.type === 'boolean') {
                                         input.checked = !!val;
                                     } else {
-                                        input.value = val;
+                                        input.value = Array.isArray(val) ? val.join(' ') : val;
                                     }
                                 }
                             }
@@ -4225,6 +4402,8 @@
                     val = input.checked;
                 } else if (field.type === 'number') {
                     val = input.value === '' ? null : Number(input.value);
+                } else if (field.type === 'list') {
+                    val = input.value.trim() ? input.value.trim().split(/\s+/) : null;
                 } else {
                     val = input.value;
                     // value and init take 1/0 as numbers; the MicroPython agents refuse "1"/"0" as text.
@@ -4352,6 +4531,16 @@
                 }
 
                 displayResponse(response.status, response.statusText, latency, respData, response.headers);
+                // A key sent in a config update or load body: once the agent accepts it, save it
+                // as this agent's key, as the Danger Zone does (agents store a number as text).
+                if (response.ok && (ep.id === 'set_config' || ep.id === 'config_load')) {
+                    let sentKey;
+                    try { sentKey = JSON.parse(body || '{}').api_key; } catch { /* not JSON */ }
+                    if ((typeof sentKey === 'string' || typeof sentKey === 'number') && String(sentKey)) {
+                        document.getElementById('apiKeyInput').value = String(sentKey);
+                        saveApiKey();
+                    }
+                }
                 if (selectedEndpointId === 'config_gpio' && response.ok) {
                     updateConfigGpioQuickOptions();
                 }
@@ -4386,10 +4575,11 @@
             // Latency display
             document.getElementById('responseLatencyVal').innerText = `${latency} ms`;
 
-            // JSON Color highlighting
+            // JSON Color highlighting, or only the script text when the switch is on
             lastResponseData = data;
-            const codeBlock = document.getElementById('jsonResponseView');
-            codeBlock.innerHTML = syntaxHighlightJson(data);
+            const textField = RESPONSE_TEXT_FIELDS[selectedEndpointId];
+            responseTextField = statusCode >= 200 && statusCode < 300 && typeof data?.[textField] === 'string' ? textField : null;
+            renderResponseBody();
 
             // Headers rendering
             const headersBox = document.getElementById('responseHeadersContent');
@@ -4404,6 +4594,38 @@
             } else {
                 headersBox.innerHTML = '<span style="font-style:italic;">No headers received</span>';
             }
+        }
+
+        // Script read and run answers: the field the "only" switch shows instead of the JSON.
+        const RESPONSE_TEXT_FIELDS = { read_script: 'content', run_script: 'output' };
+        let responseTextField = null;   // that field for the last response, null when it has none
+        let responseTextOnly = localStorage.getItem('ctrlpi-response-view') !== 'json';
+
+        // Draws the last response as JSON, or as the script text alone (with the exit code on a run).
+        function renderResponseBody() {
+            const field = responseTextField;
+            document.getElementById('responseTextSwitch').style.display = field ? '' : 'none';
+            document.getElementById('responseTextLabel').textContent = field === 'content' ? 'Content only' : 'Output only';
+            document.getElementById('responseTextToggle').checked = responseTextOnly;
+            const view = document.getElementById('jsonResponseView');
+            const label = document.getElementById('responseBodyLabel');
+            if (field && responseTextOnly) {
+                view.textContent = lastResponseData[field];
+                const code = Number(lastResponseData.exit_code);
+                label.innerHTML = field.toUpperCase() + (field === 'output' && Number.isInteger(code)
+                    ? `<span class="resp-status-badge resp-exit-tag ${code === 0 ? 'resp-status-2xx' : 'resp-status-4xx'}">exit ${code}</span>`
+                    : '');
+            } else {
+                view.innerHTML = syntaxHighlightJson(lastResponseData);
+                label.textContent = 'BODY RESPONSE (application/json)';
+            }
+        }
+
+        // The switch's change handler: remembers the choice in this browser and redraws.
+        function toggleResponseText() {
+            responseTextOnly = document.getElementById('responseTextToggle').checked;
+            localStorage.setItem('ctrlpi-response-view', responseTextOnly ? 'text' : 'json');
+            renderResponseBody();
         }
 
         // HTML JSON Syntax colorizer
@@ -4430,10 +4652,12 @@
             });
         }
 
-        // Copy JSON response utility
+        // Copies what the response view shows: the JSON, or the script text alone.
         function copyResponseToClipboard() {
             if (!lastResponseData) return;
-            const str = JSON.stringify(lastResponseData, null, 4);
+            const str = responseTextField && responseTextOnly
+                ? lastResponseData[responseTextField]
+                : JSON.stringify(lastResponseData, null, 4);
             navigator.clipboard.writeText(str).then(() => {
                 const btn = document.querySelector('.copy-btn');
                 const origHtml = btn.innerHTML;
@@ -4588,11 +4812,12 @@
 
         // If the resolved host:port matches a saved record, switch the key field to
         // that Pi's own stored key - each agent keeps a separate secret, never a
-        // shared global one. Hosts with no saved record are left untouched so the
-        // user can type+save a fresh key for them.
+        // shared global one. A record saved without a key tries the agents' default key.
+        // Hosts with no saved record are left untouched so the user can type+save a
+        // fresh key for them.
         function applySavedKeyForCurrentHost() {
             const known = (_savedServersCache || []).find(s => s.url === getApiUrl());
-            if (known) document.getElementById('apiKeyInput').value = known.api_key ?? '';
+            if (known) document.getElementById('apiKeyInput').value = known.api_key || 'your-secret-key';
         }
 
         // When base address or key changes in top bar
@@ -5060,11 +5285,10 @@
                     return;
                 }
 
-                // The agent accepted the new key: use it from now on.
+                // The agent accepted the new key: save it as this agent's key and use it from now on.
                 document.getElementById('apiKeyInput').value = newKey;
                 input.value = '';
-                updateApiKeyTooltip();
-                onApiConfigChange();
+                saveApiKey();
                 setResult('✓ Key updated on the agent. The dashboard now uses the new key.', 'success');
             } catch (e) {
                 setResult(`Request failed - Key was NOT changed: ${e.message}`, 'error');

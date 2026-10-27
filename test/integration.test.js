@@ -104,6 +104,24 @@ test('lab HTTP integration with ctrlpi-cli mock agent', { timeout: 30000 }, asyn
                 await proxy('/sensor/config/example', { remove: true });
                 assert.equal((await proxy('/sensor/read/example')).status, 404);
             });
+            await t.test('script list, write, read, run and remove travel through the proxy', async () => {
+                const listing = await (await proxy('/script/list')).json();
+                assert.equal(listing.write, 'default_key');
+                const refused = await proxy('/script/write/hello.py', { content: 'result = 1' });
+                assert.equal(refused.status, 403);
+                await proxy('/config/update', { api_key: 'script-key' });
+                try {
+                    const written = await proxy('/script/write/hello.py', { content: 'result = 1' }, 'script-key');
+                    assert.deepEqual(await written.json(), { name: 'hello.py', size: 10 });
+                    assert.equal((await (await proxy('/script/read/hello.py', undefined, 'script-key')).json()).content, 'result = 1');
+                    const ran = await proxy('/script/run/hello.py', { args: ['zone1', '21'] }, 'script-key');
+                    assert.deepEqual(await ran.json(), { name: 'hello.py', exit_code: 0, output: 'ran hello.py zone1 21' });
+                    await proxy('/script/write/hello.py', { remove: true }, 'script-key');
+                    assert.equal((await proxy('/script/read/hello.py', undefined, 'script-key')).status, 404);
+                } finally {
+                    await proxy('/config/update', { api_key: 'your-secret-key' }, 'script-key');
+                }
+            });
             await t.test('config updates, loads and key rotation are forwarded', async () => {
                 await proxy('/config/update', { log_days: 3 });
                 assert.equal((await (await proxy('/config/read')).json()).log_days, 3);
@@ -195,6 +213,18 @@ test('lab HTTP integration with ctrlpi-cli mock agent', { timeout: 30000 }, asyn
 
                 const badDelete = await request('/api/servers', { method: 'DELETE' });
                 assert.equal(badDelete.status, 400);
+            });
+            await t.test('an agent saved without a key gets the default key only when it accepts it', async () => {
+                await request(`/api/servers?url=${encodeURIComponent(agent)}`, { method: 'DELETE' });
+                const added = await (await post('/api/servers', { url: agent, name: 'lab-test-agent' })).json();
+                assert.equal(added.servers.find(s => s.url === agent).api_key, 'your-secret-key');
+                const shared = JSON.parse(await fs.readFile(path.join(dir, 'agents-config.json'), 'utf8'));
+                assert.equal(shared.agents.find(a => a.port === agentPort).api_key, 'your-secret-key');
+
+                const unreachable = 'http://127.0.0.1:1';
+                const offline = await (await post('/api/servers', { url: unreachable })).json();
+                assert.equal(offline.servers.find(s => s.url === unreachable).api_key, '');
+                await request(`/api/servers?url=${encodeURIComponent(unreachable)}`, { method: 'DELETE' });
             });
             await t.test('malformed and oversized requests are rejected', async () => {
                 assert.equal((await request('/api/save-config', { method: 'POST', body: '{' })).status, 400);

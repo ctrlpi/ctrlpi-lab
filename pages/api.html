@@ -1,4 +1,4 @@
-        <!-- PANE 1: OpenAPI Tester Screen -->
+        <!-- PANE 1: REST API Tester Screen -->
         <div id="testerPane" class="pane active">
 
             <!-- Left Side Endpoint Picker -->
@@ -76,6 +76,15 @@
                             Response
                         </h3>
 
+                        <!-- Script read and run: show only the file text or the run output -->
+                        <div id="responseTextSwitch" class="response-text-switch" style="display: none;">
+                            <label for="responseTextToggle" id="responseTextLabel">Output only</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="responseTextToggle" onchange="toggleResponseText()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+
                         <!-- Empty State -->
                         <div id="responseEmptyState" class="response-empty-state">
                             <svg stroke="currentColor" viewBox="0 0 24 24">
@@ -105,7 +114,7 @@
 
                             <div class="json-viewer-container">
                                 <div class="json-viewer-header">
-                                    <span>BODY RESPONSE (application/json)</span>
+                                    <span id="responseBodyLabel">BODY RESPONSE (application/json)</span>
                                     <button class="copy-btn" onclick="copyResponseToClipboard()">
                                         <svg viewBox="0 0 24 24">
                                             <path

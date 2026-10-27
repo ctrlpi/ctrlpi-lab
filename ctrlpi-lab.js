@@ -444,8 +444,12 @@ async function handleServersPost(req, res) {
     const url = ((body.url || "").trim()).replace(/\/+$/, "");
     if (!url) throw new HttpError(400, "url is required");
     const apiKey = "api_key" in body ? body.api_key : null;
-    const servers = upsertServer(url, apiKey, (body.name || "").trim());
-    
+    let servers = upsertServer(url, apiKey, (body.name || "").trim());
+    // No key sent and none saved: store the default key if the agent accepts it, as a scan does.
+    if (apiKey === null && !servers.find(s => s.url === url)?.api_key && await defaultKeyWorks(url)) {
+        servers = upsertServer(url, DEFAULT_AGENT_KEY, "");
+    }
+
     let online = loadOnlineAgents() || [];
     if (!online.includes(url)) {
         online.push(url);

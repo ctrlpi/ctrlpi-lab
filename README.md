@@ -1,7 +1,7 @@
 # ctrlPi Lab
 
 [![Platform: Cross-Platform](https://img.shields.io/badge/platform-Cross--Platform-006400.svg)](#quick-start)
-[![Version 0.9.26](https://img.shields.io/badge/version-0.9.26-blue.svg)](https://github.com/ctrlpi/ctrlpi-lab/tags)
+[![Version 0.9.30](https://img.shields.io/badge/version-0.9.30-blue.svg)](https://github.com/ctrlpi/ctrlpi-lab/tags)
 [![Node.js 20+](https://img.shields.io/badge/node.js-20%2B-blue.svg)](https://nodejs.org/)
 [![Auth: Api-Key](https://img.shields.io/badge/auth-Api--Key-orange.svg)](#usage)
 [![License: MIT](https://img.shields.io/badge/license-MIT-188038.svg)](LICENSE)
@@ -68,10 +68,13 @@ The **Welcome to ctrlPi** panel includes Pi, Pico, and ESP32 installation steps.
 | Configure a watched input | `POST /gpio/config/6` | `{"type": "input", "watched": true}` |
 | Configure a Pi sensor | `POST /sensor/config/cpu_temp` | `{"script": "cpu-temp.sh"}` |
 | Read that sensor | `GET /sensor/read/cpu_temp` | No body |
+| Upload or edit a script | `POST /script/write/weather.py` | `{"content": "def read():\n    return 21"}` |
+| Run a script | `POST /script/run/weather.py` | `{"args": ["zone1"]}` |
 
 All endpoints except `/hello` require the agent’s API key. On a Pico, use
 `cpu-temp.py` for the example sensor. Watched inputs send events when a webhook or
-bridge target is configured; otherwise, the agent logs the events.
+bridge target is configured; otherwise, the agent logs the events. The Scripts endpoints need
+agents on 0.9.28 or later, and writing needs an agent key other than the default.
 
 ## Configuration
 
@@ -119,7 +122,8 @@ The dashboard’s `~/.ctrlpi/lab-config.json` stores its selected agent and scan
 
 ## Tabs
 
-- **API**: test GPIO, sensor, and configuration endpoints. The sidebar's Get Started section has
+- **API**: test GPIO, sensor, script, and configuration endpoints. Under Scripts, a picked
+  script loads its text into the write form for editing. The sidebar's Get Started section has
   **Welcome to ctrlPi** with Pi, Pico and ESP32 installation steps, nine **API - cURL Examples**
   aligned with the Pi API README and populated with the selected address/key, and a **Pinouts**
   link to the board pinouts on ctrlpi.com. Changing the
@@ -169,7 +173,7 @@ of Node 22, 24, and 26 with macOS, Linux (Ubuntu), and Windows. Each job starts 
 real lab server and the mock agent. There is no coverage reporting or coverage gate.
 
 Tests cover agent discovery/selection, adding agents, credentials, real proxy
-requests, the Host and Origin check, GPIO write/read state and form values, sensors,
+requests, the Host and Origin check, GPIO write/read state and form values, sensors, scripts,
 configuration persistence, logs, and webhook rendering. Dashboard tests use a small DOM stub, not a browser. Hardware
 timing/electrical behavior, real LAN discovery, external webhook delivery, and visual
 layout remain outside this suite. The mock
