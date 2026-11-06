@@ -1,6 +1,6 @@
 {
   "name": "@ctrlpi/ctrlpi-lab",
-  "version": "0.9.30",
+  "version": "0.9.31",
   "description": "A local browser dashboard for your ctrlPi setup. Test GPIO and sensor endpoints, watch webhook events, and tail agent logs, with zero dependencies.",
   "keywords": [
     "ctrlpi",
@@ -48,5 +48,5 @@
   "bugs": {
     "url": "https://github.com/ctrlpi/ctrlpi-lab/issues"
   },
-  "homepage": "https://github.com/ctrlpi/ctrlpi-lab#readme"
+  "homepage": "https://ctrlpi.com"
 }

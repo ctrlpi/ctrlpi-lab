@@ -1,7 +1,7 @@
 # ctrlPi Lab
 
 [![Platform: Cross-Platform](https://img.shields.io/badge/platform-Cross--Platform-006400.svg)](#quick-start)
-[![Version 0.9.30](https://img.shields.io/badge/version-0.9.30-blue.svg)](https://github.com/ctrlpi/ctrlpi-lab/tags)
+[![Version 0.9.31](https://img.shields.io/badge/version-0.9.31-blue.svg)](https://github.com/ctrlpi/ctrlpi-lab/tags)
 [![Node.js 20+](https://img.shields.io/badge/node.js-20%2B-blue.svg)](https://nodejs.org/)
 [![Auth: Api-Key](https://img.shields.io/badge/auth-Api--Key-orange.svg)](#usage)
 [![License: MIT](https://img.shields.io/badge/license-MIT-188038.svg)](LICENSE)
