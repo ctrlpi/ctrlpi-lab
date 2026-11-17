@@ -1,7 +1,7 @@
 # ctrlPi Lab
 
 [![Platform: Cross-Platform](https://img.shields.io/badge/platform-Cross--Platform-006400.svg)](#quick-start)
-[![Version 0.9.31](https://img.shields.io/badge/version-0.9.31-blue.svg)](https://github.com/ctrlpi/ctrlpi-lab/tags)
+[![Version 0.9.40](https://img.shields.io/badge/version-0.9.40-blue.svg)](https://github.com/ctrlpi/ctrlpi-lab/tags)
 [![Node.js 20+](https://img.shields.io/badge/node.js-20%2B-blue.svg)](https://nodejs.org/)
 [![Auth: Api-Key](https://img.shields.io/badge/auth-Api--Key-orange.svg)](#usage)
 [![License: MIT](https://img.shields.io/badge/license-MIT-188038.svg)](LICENSE)
@@ -19,7 +19,7 @@ to an agent’s REST API; install `pi-gpio-api`, `pico-gpio-api`, or `esp32-gpio
 Requires Node.js 20 or newer.
 
 ```sh
-npx @ctrlpi/ctrlpi-lab
+npx ctrlpi-lab
 ```
 
 Your browser will open automatically at [http://localhost:7474](http://localhost:7474).
@@ -79,7 +79,7 @@ agents on 0.9.28 or later, and writing needs an agent key other than the default
 ## Configuration
 
 Saved agents are stored in the shared `agents-config.json`'s `agents[]` (`{name, ip, port, api_key, updated_at}`), the
-one list every ctrlpi project reads - add an agent here and `mcp-bridge`, `studio-bridge` and the
+one list every ctrlpi project reads - add an agent here and `ctrlpi-mcp` and the
 smart-home bridges all see it. This dashboard's own `lab-config.json` holds the rest: the agent it
 is currently pointed at (`selected_agent: {ip, port}`, its key coming from that agent's `agents[]`
 entry) and `online_agents` (what the last network scan
@@ -184,13 +184,12 @@ agent approximates the REST contract; it does not replace tests on real hardware
 - **[`pi-gpio-api`](https://github.com/ctrlpi/pi-gpio-api)**: Raspberry Pi GPIO REST server that reads inputs and drives outputs (and named sensors) over an HTTP API.
 - **[`pico-gpio-api`](https://github.com/ctrlpi/pico-gpio-api)**: Raspberry Pi Pico W port of the GPIO REST server, with the same endpoints, wire format, and auth.
 - **[`esp32-gpio-api`](https://github.com/ctrlpi/esp32-gpio-api)**: ESP32 port of the GPIO REST server for MicroPython, with the same endpoints, wire format, and auth.
-- **[`mcp-bridge`](https://github.com/ctrlpi/mcp-bridge)**: MCP server that exposes GPIO control as tools for AI agents (e.g. Claude), executing them over the agents' REST API.
+- **[`ctrlpi-mcp`](https://github.com/ctrlpi/ctrlpi-mcp)**: MCP server that exposes GPIO control as tools for AI agents (e.g. Claude), executing them over the agents' REST API.
 - **[`homebridge-ctrlpi`](https://github.com/ctrlpi/homebridge-ctrlpi)**: A Homebridge plugin that brings Raspberry Pi, Pico W, and ESP32 GPIO into Apple Home, by driving one or more GPIO agents over their REST API.
-- **`homekit-bridge`** *(coming soon)*: Native Apple HomeKit bridge that exposes GPIO pins and sensors as HomeKit accessories, driven over the agents' REST API.
-- **`matter-bridge`** *(coming soon)*: Matter bridge that exposes GPIO pins and sensors to any Matter platform (Apple Home, Google Home, Alexa, Home Assistant), driven over the agents' REST API.
+- **`ctrlpi-matter`** *(coming soon)*: Matter bridge that exposes GPIO pins and sensors to any Matter platform (Apple Home, Google Home, Alexa, Home Assistant), driven over the agents' REST API.
 - **[`ctrlpi-cli`](https://github.com/ctrlpi/ctrlpi-cli)**: Command-line interface for interacting with ctrlPi agents, with shared agent configuration.
 - **[`pico-bay`](https://github.com/ctrlpi/pico-bay)**: Web app and MCP server for managing MicroPython and CircuitPython boards, such as the Raspberry Pi Pico and ESP32, over USB.
-- **`pi-bay`** *(coming soon)*: A local web app and MCP server for Raspberry Pi boards over the network. Edit files, open a remote terminal, and manage your Pi remotely.
+- **[`pi-bay`](https://github.com/ctrlpi/pi-bay)**: A local web app and MCP server for Raspberry Pi boards over the network. Edit files, open a remote terminal, and manage your Pi remotely.
 
 ## License
 

@@ -43,11 +43,11 @@
      MCP (STDIO/HTTP)                  HAP                   Matter
              │                          │                       │
              ▼                          ▼                       ▼
-        <span class="c-rose">mcp-bridge</span>               <span class="c-violet">homekit-bridge</span>           <span class="c-violet">matter-bridge</span>    <span class="c-blue">◀─────────────────────────┐</span>
+        <span class="c-rose">ctrlpi-mcp</span>               <span class="c-violet">ctrlpi-homekit</span>           <span class="c-violet">ctrlpi-matter</span>    <span class="c-blue">◀-------------------------┐</span>
              │                          │                       │                                    <span class="c-blue">:</span>
              └──────────────────────────┼───────────────────────┘                                    <span class="c-blue">:</span>
                                         │                                                            <span class="c-blue">:</span>
-              REST  /gpio/*  /sensors/*  /scripts/*  /config/*  <span class="c-mut">(Api-Key)</span>                            <span class="c-blue">:</span>
+              REST  /gpio/*  /sensor/*  /script/*  /config/*  <span class="c-mut">(Api-Key)</span>                              <span class="c-blue">:</span>
                                         │                                                            <span class="c-blue">:</span>
   <span class="c-green">agents · pi-gpio-api (Pi) · pico-gpio-api (Pico W) · esp32-gpio-api (ESP32)</span><span class="c-blue"> ── Notifications ──────┘</span>
                                         │
@@ -63,7 +63,7 @@
             <li><strong>Live Logs:</strong> inspect and tail agent logs in real time with keyword search and category filtering.</li>
             <li><strong>Webhook Monitor:</strong> monitor live events and notifications delivered to public test or local webhook endpoints.</li>
             <li><strong>Automatic Discovery:</strong> sweeps your local subnet for online agents, saves credentials securely, and keeps your agent list in sync with all ctrlPi tools.</li>
-            <li><strong>Shared Ecosystem:</strong> shares configuration with <code>mcp-bridge</code> and smart-home bridges, allowing AI assistants (like Claude) to connect to your agents using the same saved credentials.</li>
+            <li><strong>Shared Ecosystem:</strong> shares configuration with <code>ctrlpi-mcp</code> and smart-home bridges, allowing AI assistants (like Claude) to connect to your agents using the same saved credentials.</li>
         </ul>
     </div>
 
@@ -103,7 +103,7 @@ cd pi-gpio-api
         <h3>Install the API on a Raspberry Pi Pico</h3>
         <p>Requires a <strong>Pico W or Pico 2 W</strong>, MicroPython firmware, and a Mac/PC connected to the board over USB. Run the tools below on your computer, not on the Pico.</p>
         <p><strong>Easiest: Pico Bay</strong></p>
-        <div class="info-code-block">npx @ctrlpi/pico-bay</div>
+        <div class="info-code-block">npx pico-bay</div>
         <p>Connect your board and choose <strong>Install ctrlPi API</strong> from the top-right menu. Enter your API key and WiFi information when prompted. Pico Bay can also install MicroPython when the board is connected in BOOTSEL mode, or after choosing <strong>Reboot to BOOTSEL</strong>.</p>
         <p><strong>Or install with curl</strong></p>
         <div class="info-code-block">curl -fsSL https://raw.githubusercontent.com/ctrlpi/pico-gpio-api/main/install.sh | bash</div>
@@ -116,7 +116,7 @@ cd pi-gpio-api
         <h3>Install the API on an ESP32</h3>
         <p>Requires an <strong>ESP32</strong>, <strong>ESP32-C3</strong> or <strong>ESP32-S3</strong> with MicroPython 1.29 firmware (the matching ESP32_GENERIC build), and a Mac/PC connected to the board over USB. Run the tools below on your computer, not on the ESP32.</p>
         <p><strong>Easiest: Pico Bay</strong></p>
-        <div class="info-code-block">npx @ctrlpi/pico-bay</div>
+        <div class="info-code-block">npx pico-bay</div>
         <p>Connect your ESP32 and choose <strong>Install ctrlPi API</strong> from the top-right menu. Enter your API key and WiFi information when prompted.</p>
         <p><strong>Or install with curl</strong></p>
         <div class="info-code-block">curl -fsSL https://raw.githubusercontent.com/ctrlpi/esp32-gpio-api/main/install.sh | bash</div>
@@ -126,7 +126,7 @@ cd pi-gpio-api
     </div>
 
     <div class="info-section">
-        <h3>Install and connect ctrlPi MCP Bridge</h3>
+        <h3>Install and connect ctrlPi MCP</h3>
         <p>An MCP (Model Context Protocol) server that gives AI assistants like Claude Desktop full control over your GPIO agents in natural conversation, with zero dependencies.</p>
         <p><strong>Add to Claude Desktop (no install required)</strong></p>
         <p>Open Claude Desktop settings, click <strong>Developer &rarr; Edit Config</strong>, and add <code>ctrlpi</code> under <code>mcpServers</code>:</p>
@@ -134,18 +134,18 @@ cd pi-gpio-api
   "mcpServers": {
     "ctrlpi": {
       "command": "npx",
-      "args": ["-y", "@ctrlpi/mcp-bridge"]
+      "args": ["-y", "ctrlpi-mcp"]
     }
   }
 }</div>
         <p>Restart Claude Desktop. On first launch, it sweeps your local /24 subnet for agents and records them in <code>~/.ctrlpi/agents-config.json</code>.</p>
         <p><strong>Run as an HTTP service (for remote clients and integrations)</strong></p>
-        <div class="info-code-block">npx -y @ctrlpi/mcp-bridge --http</div>
+        <div class="info-code-block">npx -y ctrlpi-mcp --http</div>
         <p>Or install it in a folder of your choice:</p>
-        <div class="info-code-block">npm install @ctrlpi/mcp-bridge
-cd node_modules/@ctrlpi/mcp-bridge
+        <div class="info-code-block">npm install ctrlpi-mcp
+cd node_modules/ctrlpi-mcp
 npm start -- --http</div>
         <p>Listens on port <strong>8315</strong> and shares configuration with ctrlpi-lab in <code>~/.ctrlpi/agents-config.json</code>.</p>
-        <p>See the <a href="https://github.com/ctrlpi/mcp-bridge#readme" target="_blank" rel="noopener noreferrer">MCP Bridge documentation</a> for PM2 service configuration, key rotation, and tool details.</p>
+        <p>See the <a href="https://github.com/ctrlpi/ctrlpi-mcp#readme" target="_blank" rel="noopener noreferrer">ctrlPi MCP documentation</a> for PM2 service configuration, key rotation, and tool details.</p>
     </div>
 </div>

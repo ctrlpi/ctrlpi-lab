@@ -12,7 +12,7 @@ three-tab SPA: **API**, **Logs**, and **Webhooks**. It is not a GPIO agent.
 Node 20+ is required. Python 3 is required for integration tests. There are no npm
 runtime or development dependencies; no installation step is needed.
 
-There is no MCP tab and no MCP code: MCP clients use the separate `mcp-bridge` project.
+There is no MCP tab and no MCP code: MCP clients use the separate `ctrlpi-mcp` project.
 
 ## Running and refreshing
 
@@ -43,7 +43,7 @@ pages/main.html              CSS, header/nav, endpoint definitions, shared brows
 pages/api.html               REST tester pane
 pages/logs.html              Log toolbar and terminal
 pages/webhooks.html          Webhook Events toolbar and table
-pages/welcome.html           Overview, quick start, Pi/Pico/ESP32 and mcp-bridge installation
+pages/welcome.html           Overview, quick start, Pi/Pico/ESP32 and ctrlpi-mcp installation
 pages/api_curl.html          Nine cURL example containers
 
 test/dashboard.test.js       Browser-function tests using a small DOM/fetch stub
@@ -191,7 +191,7 @@ npm run test:ci
 `npm test` runs `node --test`, which discovers the test files without shell glob expansion
 (including on Windows). Python defaults to
 `python3`; set `PYTHON` to override it. The integration fixture `test/fixtures/mock_agent.py` is the shared mock agent:
-ctrlpi-cli, mcp-bridge, homekit-bridge and matter-bridge keep identical copies, so change them all together.
+ctrlpi-cli, ctrlpi-mcp and the bridges keep identical copies, so change them all together.
 
 Integration tests spawn the real lab server and Python mock on OS-assigned loopback
 ports. Use temporary configs, `HOST=127.0.0.1`, `PORT=0`, `--no-open`, and
