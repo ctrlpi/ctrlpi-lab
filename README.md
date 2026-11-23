@@ -1,7 +1,7 @@
 # ctrlPi Lab
 
 [![Platform: Cross-Platform](https://img.shields.io/badge/platform-Cross--Platform-006400.svg)](#quick-start)
-[![Version 0.9.40](https://img.shields.io/badge/version-0.9.40-blue.svg)](https://github.com/ctrlpi/ctrlpi-lab/tags)
+[![Version 0.9.50](https://img.shields.io/badge/version-0.9.50-blue.svg)](https://github.com/ctrlpi/ctrlpi-lab/tags)
 [![Node.js 20+](https://img.shields.io/badge/node.js-20%2B-blue.svg)](https://nodejs.org/)
 [![Auth: Api-Key](https://img.shields.io/badge/auth-Api--Key-orange.svg)](#usage)
 [![License: MIT](https://img.shields.io/badge/license-MIT-188038.svg)](LICENSE)
@@ -66,6 +66,7 @@ The **Welcome to ctrlPi** panel includes Pi, Pico, and ESP32 installation steps.
 | Set GPIO 26 HIGH | `POST /gpio/write/26` | `{"value": 1}` |
 | Pulse GPIO 26 for two seconds | `POST /gpio/write/26` | `{"value": 1, "duration": 2}` |
 | Configure a watched input | `POST /gpio/config/6` | `{"type": "input", "watched": true}` |
+| Run a script when a pin changes (agent 0.9.50+) | `POST /gpio/config/26` | `{"type": "output", "script": "on: relay.sh"}` |
 | Configure a Pi sensor | `POST /sensor/config/cpu_temp` | `{"script": "cpu-temp.sh"}` |
 | Read that sensor | `GET /sensor/read/cpu_temp` | No body |
 | Upload or edit a script | `POST /script/write/weather.py` | `{"content": "def read():\n    return 21"}` |

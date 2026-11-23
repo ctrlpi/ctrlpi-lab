@@ -140,11 +140,11 @@ cd pi-gpio-api
 }</div>
         <p>Restart Claude Desktop. On first launch, it sweeps your local /24 subnet for agents and records them in <code>~/.ctrlpi/agents-config.json</code>.</p>
         <p><strong>Run as an HTTP service (for remote clients and integrations)</strong></p>
-        <div class="info-code-block">npx -y ctrlpi-mcp --http</div>
+        <div class="info-code-block">npx -y ctrlpi-mcp --mcp http</div>
         <p>Or install it in a folder of your choice:</p>
         <div class="info-code-block">npm install ctrlpi-mcp
 cd node_modules/ctrlpi-mcp
-npm start -- --http</div>
+npm start -- --mcp http</div>
         <p>Listens on port <strong>8315</strong> and shares configuration with ctrlpi-lab in <code>~/.ctrlpi/agents-config.json</code>.</p>
         <p>See the <a href="https://github.com/ctrlpi/ctrlpi-mcp#readme" target="_blank" rel="noopener noreferrer">ctrlPi MCP documentation</a> for PM2 service configuration, key rotation, and tool details.</p>
     </div>

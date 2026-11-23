@@ -2779,6 +2779,7 @@
         //                             textarea (multi-line text) or list (space-separated, sent as an array)
         //     conditionalOn           shown and sent only while another field has one of these values
         //     sendEmpty               sent even when left empty (clears the value on the agent)
+        //     sendEmptyIfSet          sent when left empty only if the field was prefilled with a value (clears it)
         //     quickOptions            pick buttons, filled from the agent's current pins or sensors
         //   defaultBody               the starting raw JSON body
         //   autoSend                  a quick-pick button also sends the request
@@ -2936,6 +2937,15 @@
                         conditionalOn: { field: 'type', values: ['output', 'input'] },
                         description: 'Watch for state changes and POST to the configured webhook URL. With no webhook URL configured, watched events are logged on the agent instead of sent.',
                         default: false
+                    },
+                    {
+                        name: 'script',
+                        type: 'text',
+                        required: false,
+                        conditionalOn: { field: 'type', values: ['output', 'input'] },
+                        sendEmptyIfSet: true,
+                        description: 'A script from the agent\'s scripts folder to run when the pin\'s value changes: "[on:|off:]<file> [args]". "on:" runs it only when the pin goes to 1, "off:" only when it goes to 0 (no value is passed); with no prefix it runs on both and gets 1 or 0 as its last argument. Empty it to clear the script. Needs agent 0.9.50 or later.',
+                        placeholder: 'e.g. on: relay.sh'
                     },
                     {
                         name: 'remove',
@@ -4276,6 +4286,8 @@
             if (revGroup) revGroup.style.display = isSignal ? '' : 'none';
             const watchedGroup = document.getElementById('param-body-group-watched');
             if (watchedGroup) watchedGroup.style.display = isSignal ? '' : 'none';
+            const scriptGroup = document.getElementById('param-body-group-script');
+            if (scriptGroup) scriptGroup.style.display = isSignal ? '' : 'none';
             const removeEl = document.getElementById('param-body-remove');
             if (removeEl) removeEl.checked = isClear;
         }
@@ -4324,6 +4336,10 @@
                     // Boolean fields
                     if (el('reversed')) el('reversed').checked = !!pin.reversed;
                     if (el('watched')) el('watched').checked = !!pin.watched;
+                    if (el('script')) {
+                        el('script').value = pin.script || '';
+                        el('script').dataset.hadValue = pin.script ? '1' : '';   // emptying it then clears it on the agent
+                    }
                     if (el('remove')) el('remove').checked = false;
                     onGpioTypeChange(pin.type || 'output');
                 } catch (_) {}
@@ -4411,7 +4427,7 @@
                     else if ((val === '1' || val === '0') && (field.name === 'value' || field.name === 'init')) val = Number(val);
                 }
 
-                if (val !== null && (val !== '' || field.sendEmpty)) {
+                if (val !== null && (val !== '' || field.sendEmpty || (field.sendEmptyIfSet && input.dataset && input.dataset.hadValue === '1'))) {
                     payload[field.name] = val;
                 }
             });

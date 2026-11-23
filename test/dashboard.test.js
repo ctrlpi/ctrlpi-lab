@@ -459,6 +459,25 @@ test('getFormBodyData formats and syncs remove and type for GPIO config', () => 
     assert.equal(payload.remove, true);
 });
 
+test('GPIO config Script field shows for inputs and outputs, and an emptied script is sent to clear it', () => {
+    const { context, get } = dashboard();
+    context.selectEndpoint('config_gpio', false);
+    for (const [type, shown] of [['output', ''], ['input', ''], ['gnd', 'none'], ['remove', 'none']]) {
+        context.onGpioTypeChange(type);
+        assert.equal(get('param-body-group-script').style.display, shown, type);
+    }
+    get('param-body-type').value = 'output';
+    get('param-body-remove').checked = false;
+    get('param-body-script').value = 'on: relay.sh';
+    assert.equal(context.getFormBodyData().script, 'on: relay.sh');
+    // Empty and never prefilled with a script: left out, so an older agent never stores an empty one
+    get('param-body-script').value = '';
+    assert.equal('script' in context.getFormBodyData(), false);
+    // Empty after being prefilled with a script: sent as "" to clear it
+    get('param-body-script').dataset.hadValue = '1';
+    assert.equal(context.getFormBodyData().script, '');
+});
+
 test('getFormBodyData sends init 1/0 as numbers and keeps other init values as text', () => {
     const { context, get } = dashboard();
     context.selectEndpoint('config_gpio', false);
